@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arbor.Ginkgo", "Arbor.Ginkgo\Arbor.Ginkgo.csproj", "{3D8A1D50-5D81-43AD-9880-2E94B8920266}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Arbor.Ginkgo", "NuGet.Arbor.Ginkgo\NuGet.Arbor.Ginkgo.csproj", "{0451BAEF-DF2E-4B98-8644-94EE9415E389}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Arbor.Ginkgo", "Arbor.Ginkgo.NuGet\NuGet.Arbor.Ginkgo.csproj", "{0451BAEF-DF2E-4B98-8644-94EE9415E389}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

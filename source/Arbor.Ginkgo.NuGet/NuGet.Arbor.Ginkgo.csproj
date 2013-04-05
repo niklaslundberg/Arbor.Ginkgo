@@ -8,8 +8,8 @@
     <ProjectGuid>{0451BAEF-DF2E-4B98-8644-94EE9415E389}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NuGet.Arbor.Ginkgo</RootNamespace>
-    <AssemblyName>NuGet.Arbor.Ginkgo</AssemblyName>
+    <RootNamespace>Arbor.Ginkgo.NuGet</RootNamespace>
+    <AssemblyName>Arbor.Ginkgo.NuGet</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
