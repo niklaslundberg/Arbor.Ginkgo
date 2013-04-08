@@ -9,13 +9,19 @@ namespace Arbor.Ginkgo
 {
 	public static class IisHelper
 	{
-		public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath)
+		public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
+		                                                       Action<Path> onCopiedWebsite = null)
 		{
 			int port = GetAvailablePort();
 
 			var iisExpress = new IisExpress();
 
 			var tempWebsitePath = CopyWebsiteToTempPath(websitePath, port);
+
+			if (onCopiedWebsite != null)
+			{
+				onCopiedWebsite(tempWebsitePath);
+			}
 
 			await iisExpress.Start(templatePath, port, tempWebsitePath, removeSiteOnExit: true);
 			return iisExpress;
