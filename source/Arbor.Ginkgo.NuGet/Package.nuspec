@@ -28,6 +28,6 @@
 	<tags></tags>
   </metadata>
   <files>
-	  <file src="bin\Release\Arbor.Ginkgo.dll" target="lib\net45\Ginkgo.dll" />	
+	  <file src="bin\Release\Arbor.Ginkgo.dll" target="lib\net45\Arbor.Ginkgo.dll" />	
   </files>
 </package>
