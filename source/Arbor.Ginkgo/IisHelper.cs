@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Arbor.Ginkgo
@@ -10,9 +11,9 @@ namespace Arbor.Ginkgo
 	public static class IisHelper
 	{
 		public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
-		                                                       Action<Path> onCopiedWebsite = null)
+		                                                       Action<Path> onCopiedWebsite = null, int tcpPort = -1)
 		{
-			int port = GetAvailablePort();
+			int port = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailablePort();
 
 			var iisExpress = new IisExpress();
 
@@ -44,15 +45,23 @@ namespace Arbor.Ginkgo
 
 			tempDirectory.Create();
 
-			var bannedExtensionList = new List<string> {".user", ".cs", ".csproj"};
+			var bannedExtensionList = new List<string> {".user", ".cs", ".csproj", ".dotSettings", ".suo"};
+			var bannedFiles = new List<string> {"packages.config"};
 
 			Predicate<FileInfo> bannedExtensions =
 				file =>
 				bannedExtensionList.Any(extension => extension.Equals(file.Extension, StringComparison.InvariantCultureIgnoreCase));
+
+			Predicate<FileInfo> bannedFileNames =
+				file =>
+				bannedFiles.Any(bannedFile => bannedFile.Equals(file.Name, StringComparison.InvariantCultureIgnoreCase));
+
 			IEnumerable<Predicate<FileInfo>> filesToExclude = new List<Predicate<FileInfo>>
 				                                                  {
-					                                                  bannedExtensions
+					                                                  bannedExtensions,
+					                                                  bannedFileNames
 				                                                  };
+
 			originalWebsiteDirectory.CopyTo(tempDirectory, filesToExclude: filesToExclude);
 
 			return tempPath;
