@@ -1,9 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30110.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arbor.Ginkgo", "Arbor.Ginkgo\Arbor.Ginkgo.csproj", "{3D8A1D50-5D81-43AD-9880-2E94B8920266}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NuGet.Arbor.Ginkgo", "Arbor.Ginkgo.NuGet\NuGet.Arbor.Ginkgo.csproj", "{0451BAEF-DF2E-4B98-8644-94EE9415E389}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arbor.Ginkgo.Tests.Integration", "Arbor.Ginkgo.Tests.Integration\Arbor.Ginkgo.Tests.Integration.csproj", "{BA614B2F-293E-445B-BF4B-50CC57579FF7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arbor.Ginkgo.Tests.Integration.WebApp", "Arbor.Ginkgo.Tests.Integration.WebApp\Arbor.Ginkgo.Tests.Integration.WebApp.csproj", "{2C6F4FB7-7F12-4122-B83E-32CD2E0E0D82}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,6 +25,14 @@ Global
 		{0451BAEF-DF2E-4B98-8644-94EE9415E389}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0451BAEF-DF2E-4B98-8644-94EE9415E389}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0451BAEF-DF2E-4B98-8644-94EE9415E389}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA614B2F-293E-445B-BF4B-50CC57579FF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA614B2F-293E-445B-BF4B-50CC57579FF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA614B2F-293E-445B-BF4B-50CC57579FF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA614B2F-293E-445B-BF4B-50CC57579FF7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C6F4FB7-7F12-4122-B83E-32CD2E0E0D82}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C6F4FB7-7F12-4122-B83E-32CD2E0E0D82}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C6F4FB7-7F12-4122-B83E-32CD2E0E0D82}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C6F4FB7-7F12-4122-B83E-32CD2E0E0D82}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

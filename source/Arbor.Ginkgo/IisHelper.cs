@@ -5,19 +5,22 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Web.XmlTransform;
 
 namespace Arbor.Ginkgo
 {
 	public static class IisHelper
 	{
 		public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
-		                                                       Action<Path> onCopiedWebsite = null, int tcpPort = -1)
+		                                                       Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null)
 		{
 			int port = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailablePort();
 
 			var iisExpress = new IisExpress();
 
 			var tempWebsitePath = CopyWebsiteToTempPath(websitePath, port);
+
+            TransformWebConfig(websitePath, transformConfiguration, tempWebsitePath);
 
 			if (onCopiedWebsite != null)
 			{
@@ -28,7 +31,34 @@ namespace Arbor.Ginkgo
 			return iisExpress;
 		}
 
-		static Path CopyWebsiteToTempPath(Path websitePath, int port)
+	    static void TransformWebConfig(Path websitePath, string transformConfiguration, Path tempWebsitePath)
+	    {
+	        if (string.IsNullOrWhiteSpace(transformConfiguration))
+	        {
+	            return;
+	        }
+	        
+	        Path transformRootFile = Path.Combine(websitePath, "web.config");
+
+	        Path transformationFile = Path.Combine(websitePath, string.Format("web.{0}.config", transformConfiguration));
+
+	        if (File.Exists(transformRootFile.FullName) && File.Exists(transformationFile.FullName))
+	        {
+	            Path targetFile = Path.Combine(tempWebsitePath, "web.config");
+
+	            var transformable = new XmlTransformableDocument();
+	            transformable.Load(transformRootFile.FullName);
+
+	            var transformation = new XmlTransformation(transformationFile.FullName);
+
+	            if (transformation.Apply(transformable))
+	            {
+	                transformable.Save(targetFile.FullName);
+	            }
+	        }
+	    }
+
+	    static Path CopyWebsiteToTempPath(Path websitePath, int port)
 		{
 			var tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Ginkgo", "TempWebsite",
 			                            port.ToString(CultureInfo.InvariantCulture));
@@ -47,6 +77,7 @@ namespace Arbor.Ginkgo
 
 			var bannedExtensionList = new List<string> {".user", ".cs", ".csproj", ".dotSettings", ".suo"};
 			var bannedFiles = new List<string> {"packages.config"};
+			var bannedDirectories = new List<string> {"obj"};
 
 			Predicate<FileInfo> bannedExtensions =
 				file =>
@@ -62,7 +93,7 @@ namespace Arbor.Ginkgo
 					                                                  bannedFileNames
 				                                                  };
 
-			originalWebsiteDirectory.CopyTo(tempDirectory, filesToExclude: filesToExclude);
+			originalWebsiteDirectory.CopyTo(tempDirectory, filesToExclude: filesToExclude, directoriesToExclude: bannedDirectories);
 
 			return tempPath;
 		}

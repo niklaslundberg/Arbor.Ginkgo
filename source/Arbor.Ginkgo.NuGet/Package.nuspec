@@ -19,7 +19,7 @@
 	<iconUrl>https://nuget.org/Content/Images/packageDefaultIcon-50x50.png</iconUrl>
 	<requireLicenseAcceptance>false</requireLicenseAcceptance>
 	<licenseUrl>http://opensource.org/licenses/MIT</licenseUrl>
-	<copyright>Copyright Niklas Lundberg 2013</copyright>
+	<copyright>Copyright Niklas Lundberg 2013-2014</copyright>
 	<dependencies>
 		<group targetFramework="net45">         
 		</group>

@@ -20,7 +20,7 @@ namespace Arbor.Ginkgo
 		}
 
 		public static void CopyTo(this DirectoryInfo sourceDirectory, DirectoryInfo destinationDirectory,
-		                          bool copySubDirectories = true, IEnumerable<Predicate<FileInfo>> filesToExclude = null)
+		                          bool copySubDirectories = true, IEnumerable<Predicate<FileInfo>> filesToExclude = null, IEnumerable<string> directoriesToExclude = null)
 		{
 			if (sourceDirectory == null)
 			{
@@ -39,6 +39,7 @@ namespace Arbor.Ginkgo
 			}
 
 			var filePredicates = filesToExclude ?? new List<Predicate<FileInfo>>();
+		    var excludedDirectories = directoriesToExclude ?? new List<string>(); 
 
 			if (destinationDirectory.Exists)
 			{
@@ -71,11 +72,16 @@ namespace Arbor.Ginkgo
 
 				foreach (DirectoryInfo subdir in subDirectory)
 				{
-					var subDirectoryTempPath = Path.Combine(destinationDirectory.FullName, subdir.Name);
+				    if (
+				        !excludedDirectories.Any(
+				            excluded => subdir.Name.Equals(excluded, StringComparison.InvariantCultureIgnoreCase)))
+				    {
+				        var subDirectoryTempPath = Path.Combine(destinationDirectory.FullName, subdir.Name);
 
-					var subDirectoryInfo = new DirectoryInfo(subDirectoryTempPath.FullName);
+				        var subDirectoryInfo = new DirectoryInfo(subDirectoryTempPath.FullName);
 
-					subdir.CopyTo(subDirectoryInfo);
+				        subdir.CopyTo(subDirectoryInfo);
+				    }
 				}
 			}
 		}
