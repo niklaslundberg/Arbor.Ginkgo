@@ -35,7 +35,12 @@ namespace Arbor.Ginkgo
 
 		public int Port { get; private set; }
 
-		public void Dispose()
+	    public Path WebsitePath
+	    {
+	        get { return _websitePath; }
+	    }
+
+	    public void Dispose()
 		{
 			Dispose(true);
 			GC.SuppressFinalize(this);
@@ -50,7 +55,7 @@ namespace Arbor.Ginkgo
 
 			var iisExpressPath = DetermineIisExpressDir();
 
-			await CreateTempAppHostConfig(websitePath, configFile, port, tempFilePath, iisExpressPath);
+			await CreateTempAppHostConfigAsync(websitePath, configFile, port, tempFilePath, iisExpressPath);
 
 			string arguments = String.Format(
 				CultureInfo.InvariantCulture, "/config:\"{0}\" /site:{1}", tempFilePath, string.Format("Ginkgo_{0}", port));
@@ -73,7 +78,7 @@ namespace Arbor.Ginkgo
 			startThread.Start();
 		}
 
-		async Task CreateTempAppHostConfig(Path websitePath, Path templateConfigFilePath, int port, Path tempFilePath,
+		async Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int port, Path tempFilePath,
 		                                   Path iisExpressPath)
 		{
 			var fileInfo = new FileInfo(tempFilePath.FullName);
@@ -214,16 +219,16 @@ namespace Arbor.Ginkgo
 			{
 				try
 				{
-					if (_websitePath.Exists)
+					if (WebsitePath.Exists)
 					{
-						var directoryInfo = new DirectoryInfo(_websitePath.FullName);
+						var directoryInfo = new DirectoryInfo(WebsitePath.FullName);
 
 						directoryInfo.Delete(true);
 					}
 				}
 				catch (IOException ex)
 				{
-					throw new IOException("Could not delete the website path '" + _websitePath.FullName + "'", ex);
+					throw new IOException("Could not delete the website path '" + WebsitePath.FullName + "'", ex);
 				}
 			}
 
