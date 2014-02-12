@@ -12,13 +12,13 @@ namespace Arbor.Ginkgo
 	public static class IisHelper
 	{
 		public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
-		                                                       Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null)
+		                                                       Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null, string tempPath = null)
 		{
 			int port = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailablePort();
 
 			var iisExpress = new IisExpress();
 
-			var tempWebsitePath = CopyWebsiteToTempPath(websitePath, port);
+            Path tempWebsitePath = tempPath != null ? new Path(tempPath) : CopyWebsiteToTempPath(websitePath, port);
 
             TransformWebConfig(websitePath, transformConfiguration, tempWebsitePath);
 
