@@ -18,7 +18,10 @@ namespace Arbor.Ginkgo
 
 			var iisExpress = new IisExpress();
 
-            Path tempWebsitePath = tempPath != null ? new Path(tempPath) : CopyWebsiteToTempPath(websitePath, port);
+            Path tempWebsitePath = tempPath != null ? new Path(tempPath) : Path.Combine(System.IO.Path.GetTempPath(), "Ginkgo", "TempWebsite",
+			                            port.ToString(CultureInfo.InvariantCulture));
+
+            CopyWebsiteToTempPath(websitePath, tempWebsitePath);
 
             TransformWebConfig(websitePath, transformConfiguration, tempWebsitePath);
 
@@ -58,12 +61,8 @@ namespace Arbor.Ginkgo
 	        }
 	    }
 
-	    static Path CopyWebsiteToTempPath(Path websitePath, int port)
+	    static Path CopyWebsiteToTempPath(Path websitePath, Path tempPath)
 		{
-			var tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Ginkgo", "TempWebsite",
-			                            port.ToString(CultureInfo.InvariantCulture));
-
-
 			var originalWebsiteDirectory = new DirectoryInfo(websitePath.FullName);
 
 			var tempDirectory = new DirectoryInfo(tempPath.FullName);
