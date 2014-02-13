@@ -61,6 +61,7 @@
   <ItemGroup>
     <Compile Include="when_starting_iis_with_release_transform_config.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="when_using_custom_temp_path.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

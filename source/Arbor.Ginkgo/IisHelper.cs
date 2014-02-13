@@ -9,99 +9,117 @@ using Microsoft.Web.XmlTransform;
 
 namespace Arbor.Ginkgo
 {
-	public static class IisHelper
-	{
-		public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
-		                                                       Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null, string tempPath = null)
-		{
-			int port = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailablePort();
+    public static class IisHelper
+    {
+        public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
+            Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null,
+            string tempPath = null, bool removeSiteOnExit = true)
+        {
+            int port = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailablePort();
 
-			var iisExpress = new IisExpress();
+            var iisExpress = new IisExpress();
 
-            Path tempWebsitePath = tempPath != null ? new Path(tempPath) : Path.Combine(System.IO.Path.GetTempPath(), "Ginkgo", "TempWebsite",
-			                            port.ToString(CultureInfo.InvariantCulture));
+            Path tempWebsitePath = tempPath != null
+                ? new Path(tempPath)
+                : Path.Combine(System.IO.Path.GetTempPath(), "Ginkgo", "TempWebsite",
+                    port.ToString(CultureInfo.InvariantCulture));
 
             CopyWebsiteToTempPath(websitePath, tempWebsitePath);
 
+            Console.WriteLine("Copying files from {0} to {1}", websitePath.FullName, tempWebsitePath.FullName);
+
             TransformWebConfig(websitePath, transformConfiguration, tempWebsitePath);
 
-			if (onCopiedWebsite != null)
-			{
-				onCopiedWebsite(tempWebsitePath);
-			}
+            if (onCopiedWebsite != null)
+            {
+                onCopiedWebsite(tempWebsitePath);
+            }
 
-			await iisExpress.Start(templatePath, port, tempWebsitePath, removeSiteOnExit: true);
-			return iisExpress;
-		}
+            await iisExpress.Start(templatePath, port, tempWebsitePath, removeSiteOnExit);
+            return iisExpress;
+        }
 
-	    static void TransformWebConfig(Path websitePath, string transformConfiguration, Path tempWebsitePath)
-	    {
-	        if (string.IsNullOrWhiteSpace(transformConfiguration))
-	        {
-	            return;
-	        }
-	        
-	        Path transformRootFile = Path.Combine(websitePath, "web.config");
+        static void TransformWebConfig(Path websitePath, string transformConfiguration, Path tempWebsitePath)
+        {
+            if (string.IsNullOrWhiteSpace(transformConfiguration))
+            {
+                return;
+            }
 
-	        Path transformationFile = Path.Combine(websitePath, string.Format("web.{0}.config", transformConfiguration));
+            Path transformRootFile = Path.Combine(websitePath, "web.config");
 
-	        if (File.Exists(transformRootFile.FullName) && File.Exists(transformationFile.FullName))
-	        {
-	            Path targetFile = Path.Combine(tempWebsitePath, "web.config");
+            Path transformationFile = Path.Combine(websitePath, string.Format("web.{0}.config", transformConfiguration));
 
-	            var transformable = new XmlTransformableDocument();
-	            transformable.Load(transformRootFile.FullName);
+            if (File.Exists(transformRootFile.FullName) && File.Exists(transformationFile.FullName))
+            {
+                Path targetFile = Path.Combine(tempWebsitePath, "web.config");
 
-	            var transformation = new XmlTransformation(transformationFile.FullName);
+                string fullName = new FileInfo(targetFile.FullName).Directory.FullName;
+                if (Directory.Exists(fullName))
+                {
+                    var transformable = new XmlTransformableDocument();
+                    transformable.Load(transformRootFile.FullName);
 
-	            if (transformation.Apply(transformable))
-	            {
-	                transformable.Save(targetFile.FullName);
-	            }
-	        }
-	    }
+                    var transformation = new XmlTransformation(transformationFile.FullName);
 
-	    static Path CopyWebsiteToTempPath(Path websitePath, Path tempPath)
-		{
-			var originalWebsiteDirectory = new DirectoryInfo(websitePath.FullName);
+                    if (transformation.Apply(transformable))
+                    {
+                        transformable.Save(targetFile.FullName);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Directory {0} does not exist", fullName);
+                }
+            }
+        }
 
-			var tempDirectory = new DirectoryInfo(tempPath.FullName);
+        static void CopyWebsiteToTempPath(Path websitePath, Path tempPath)
+        {
+            var originalWebsiteDirectory = new DirectoryInfo(websitePath.FullName);
 
-			if (tempDirectory.Exists)
-			{
-				tempDirectory.Delete(true);
-			}
+            var tempDirectory = new DirectoryInfo(tempPath.FullName);
 
-			tempDirectory.Create();
+            if (tempDirectory.Exists)
+            {
+                Console.WriteLine("Deleting temp directory {0}", tempDirectory.FullName);
+                tempDirectory.Delete(true);
+            }
+            tempDirectory.Refresh();
+            Console.WriteLine("Creating temp directory {0}", tempDirectory.FullName);
+            tempDirectory.Create();
 
-			var bannedExtensionList = new List<string> {".user", ".cs", ".csproj", ".dotSettings", ".suo"};
-			var bannedFiles = new List<string> {"packages.config"};
-			var bannedDirectories = new List<string> {"obj"};
+            var bannedExtensionList = new List<string> {".user", ".cs", ".csproj", ".dotSettings", ".suo"};
+            var bannedFiles = new List<string> {"packages.config"};
+            var bannedDirectories = new List<string> {"obj"};
 
-			Predicate<FileInfo> bannedExtensions =
-				file =>
-				bannedExtensionList.Any(extension => extension.Equals(file.Extension, StringComparison.InvariantCultureIgnoreCase));
+            Predicate<FileInfo> bannedExtensions =
+                file =>
+                    bannedExtensionList.Any(
+                        extension => extension.Equals(file.Extension, StringComparison.InvariantCultureIgnoreCase));
 
-			Predicate<FileInfo> bannedFileNames =
-				file =>
-				bannedFiles.Any(bannedFile => bannedFile.Equals(file.Name, StringComparison.InvariantCultureIgnoreCase));
+            Predicate<FileInfo> bannedFileNames =
+                file =>
+                    bannedFiles.Any(
+                        bannedFile => bannedFile.Equals(file.Name, StringComparison.InvariantCultureIgnoreCase));
 
-			IEnumerable<Predicate<FileInfo>> filesToExclude = new List<Predicate<FileInfo>>
-				                                                  {
-					                                                  bannedExtensions,
-					                                                  bannedFileNames
-				                                                  };
+            IEnumerable<Predicate<FileInfo>> filesToExclude = new List<Predicate<FileInfo>>
+                                                              {
+                                                                  bannedExtensions,
+                                                                  bannedFileNames
+                                                              };
 
-			originalWebsiteDirectory.CopyTo(tempDirectory, filesToExclude: filesToExclude, directoriesToExclude: bannedDirectories);
+           var itemsCopied =  originalWebsiteDirectory.CopyTo(tempDirectory, filesToExclude: filesToExclude,
+                directoriesToExclude: bannedDirectories);
 
-			return tempPath;
-		}
+            Console.WriteLine("Copied {0} items", itemsCopied);
+        }
 
-		static int GetAvailablePort()
-		{
-			var range = new PortPoolRange(44300, 100);
+        static int GetAvailablePort()
+        {
+            var range = new PortPoolRange(44300, 100);
 
-			return TcpHelper.GetAvailablePort(range);
-		}
-	}
+            return TcpHelper.GetAvailablePort(range);
+        }
+    }
 }

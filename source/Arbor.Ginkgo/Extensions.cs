@@ -19,9 +19,11 @@ namespace Arbor.Ginkgo
 			return normalizePath;
 		}
 
-		public static void CopyTo(this DirectoryInfo sourceDirectory, DirectoryInfo destinationDirectory,
+		public static int CopyTo(this DirectoryInfo sourceDirectory, DirectoryInfo destinationDirectory,
 		                          bool copySubDirectories = true, IEnumerable<Predicate<FileInfo>> filesToExclude = null, IEnumerable<string> directoriesToExclude = null)
 		{
+		    var copiedItems = 0;
+
 			if (sourceDirectory == null)
 			{
 				throw new ArgumentNullException("sourceDirectory");
@@ -37,7 +39,7 @@ namespace Arbor.Ginkgo
 				throw new DirectoryNotFoundException(
 					string.Format("Source directory does not exist or could not be found: {0}", sourceDirectory.FullName));
 			}
-
+            
 			var filePredicates = filesToExclude ?? new List<Predicate<FileInfo>>();
 		    var excludedDirectories = directoriesToExclude ?? new List<string>(); 
 
@@ -56,6 +58,7 @@ namespace Arbor.Ginkgo
 			else
 			{
 				destinationDirectory.Create();
+			    copiedItems++;
 			}
 
 			var files = sourceDirectory.EnumerateFiles().Where(file => filePredicates.All(predicate => !predicate(file)));
@@ -64,6 +67,7 @@ namespace Arbor.Ginkgo
 			{
 				var temppath = Path.Combine(destinationDirectory.FullName, file.Name);
 				file.CopyTo(temppath.FullName, false);
+			    copiedItems++;
 			}
 
 			if (copySubDirectories)
@@ -80,10 +84,11 @@ namespace Arbor.Ginkgo
 
 				        var subDirectoryInfo = new DirectoryInfo(subDirectoryTempPath.FullName);
 
-				        subdir.CopyTo(subDirectoryInfo);
+                        copiedItems += subdir.CopyTo(subDirectoryInfo);
 				    }
 				}
 			}
+		    return copiedItems;
 		}
 
 		static bool IsEmpty(this DirectoryInfo directoryInfo)

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -41,11 +42,11 @@ namespace Arbor.Ginkgo
 	    }
 
 	    public void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
-
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+	    }
+        
 		public async Task Start(Path configFile, int port, Path websitePath, bool removeSiteOnExit = false)
 		{
 			_removeSiteOnExit = removeSiteOnExit;
@@ -167,10 +168,20 @@ namespace Arbor.Ginkgo
 			{
 				return;
 			}
+		    int waitCounter = 1;
+
+		    while(!_processId.HasValue)
+		    {
+		        Thread.Sleep(TimeSpan.FromMilliseconds(50));
+                Console.WriteLine("Waiting {0} milliseconds", 50 * waitCounter);
+		        waitCounter++;
+		    }
+
+		    Console.WriteLine("Disposing IIS Express process");
 
 			if (disposing)
 			{
-				int? pid = null;
+				int? pid;
 
 				if (_process != null)
 				{
@@ -189,30 +200,33 @@ namespace Arbor.Ginkgo
 				}
 				else
 				{
+				    pid = _processId;
 					Console.WriteLine("Process is null");
 				}
+                
+			    if (pid != null)
+			    {
+			        try
+			        {
+                        var process = Process.GetProcessById(pid.Value);
 
-				var processId = _processId ?? pid;
-
-				if (processId != null)
-				{
-					try
-					{
-						var process = Process.GetProcessById(processId.Value);
-
-						using (process)
-						{
-							Console.WriteLine("Killing IIS Express");
-							if (!process.HasExited)
-							{
-								process.Kill();
-							}
-						}
-					}
-					catch (Exception ex)
-					{
-					}
-				}
+			            using (process)
+			            {
+			                Console.WriteLine("Killing IIS Express");
+			                if (!process.HasExited)
+			                {
+			                    process.Kill();
+			                }
+			            }
+			        }
+			        catch (Exception ex)
+			        {
+			        }
+			    }
+			    else
+			    {
+                    Console.WriteLine("Could not find any process id to kill");
+			    }
 			}
 
 			if (_removeSiteOnExit)
@@ -255,13 +269,21 @@ namespace Arbor.Ginkgo
 				Console.WriteLine("Starting IIS Express");
 				_process = Process.Start(info);
 
-				_processId = _process.Id;
-				Console.WriteLine("Running IIS Express, waiting for exit");
+			    if (_process != null)
+			    {
 
-				if (!_process.HasExited)
-				{
-					_process.WaitForExit();
-				}
+			        _processId = _process.Id;
+			        Console.WriteLine("Running IIS Express with id {0}, waiting for exit", _processId);
+
+			        if (!_process.HasExited)
+			        {
+			            _process.WaitForExit();
+			        }
+			    }
+			    else
+			    {
+			        Console.WriteLine("Could not get any process reference");
+			    }
 			}
 			catch (ThreadAbortException)
 			{
