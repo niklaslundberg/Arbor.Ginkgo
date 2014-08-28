@@ -39,7 +39,7 @@ namespace Arbor.Ginkgo.Tests.Integration
         {
             using (var httpClient = new HttpClient())
             {
-                result = httpClient.GetAsync(string.Format("https://localhost:{0}/api/test", iis.Port)).Result;
+                result = httpClient.GetAsync(string.Format("http://localhost:{0}/api/test", iis.Port)).Result;
             }
 
             Console.WriteLine(result.StatusCode + " " + result.Content.ReadAsStringAsync().Result);

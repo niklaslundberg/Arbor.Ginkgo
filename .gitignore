@@ -1,5 +1,7 @@
 packages
 source/packages
+Artifacts
+/_patchedAssemblyInfos
 
 #################
 ## Eclipse

@@ -4,298 +4,369 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
-using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Arbor.Ginkgo
 {
-	public class IisExpress : IDisposable
-	{
-		Boolean _isDisposed;
+    public class IisExpress : IDisposable
+    {
+        Boolean _isDisposed;
 
-		Process _process;
-		int? _processId;
-		bool _removeSiteOnExit;
-		Path _websitePath;
+        Process _process;
+        int? _processId;
+        bool _removeSiteOnExit;
+        Path _websitePath;
 
-		public int? ProcessId
-		{
-			get
-			{
-				try
-				{
-					return _process != null ? _process.Id : _processId;
-				}
-				catch (Exception)
-				{
-					return _processId;
-				}
-			}
-		}
+        public int? ProcessId
+        {
+            get
+            {
+                try
+                {
+                    return _process != null ? _process.Id : _processId;
+                }
+                catch (Exception)
+                {
+                    return _processId;
+                }
+            }
+        }
 
-		public int Port { get; private set; }
+        public int Port { get; private set; }
+        public int HttpsPort { get; private set; }
 
-	    public Path WebsitePath
-	    {
-	        get { return _websitePath; }
-	    }
+        public Path WebsitePath
+        {
+            get { return _websitePath; }
+        }
 
-	    public void Dispose()
+        public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
-	    }
-        
-		public async Task Start(Path configFile, int port, Path websitePath, bool removeSiteOnExit = false)
-		{
-			_removeSiteOnExit = removeSiteOnExit;
-			_websitePath = websitePath;
+        }
 
-			var tempFilePath = TempFilePathForAppHostConfig(port);
+        public async Task StartAsync(Path configFile, int httpPort, int httpsPort, Path websitePath,
+            bool removeSiteOnExit = false, string customHostName = "")
+        {
 
-			var iisExpressPath = DetermineIisExpressDir();
+            if (httpPort == httpsPort)
+            {
+                throw new ArgumentException("HTTP port and HTTPS port cannot be the same");
+            }
 
-			await CreateTempAppHostConfigAsync(websitePath, configFile, port, tempFilePath, iisExpressPath);
+            _removeSiteOnExit = removeSiteOnExit;
+            _websitePath = websitePath;
 
-			string arguments = String.Format(
-				CultureInfo.InvariantCulture, "/config:\"{0}\" /site:{1}", tempFilePath, string.Format("Ginkgo_{0}", port));
+            Path tempFilePath = TempFilePathForAppHostConfig(httpPort);
 
-			var info = new ProcessStartInfo(iisExpressPath + @"\iisexpress.exe")
-				           {
-					           WindowStyle = ProcessWindowStyle.Normal,
-					           ErrorDialog = true,
-					           LoadUserProfile = true,
-					           CreateNoWindow = false,
-					           Arguments = arguments,
-					           UseShellExecute = false,
-				           };
+            Path iisExpressPath = DetermineIisExpressDir();
 
-			var startThread = new Thread(async () => await StartIisExpressAsync(info))
-				                  {
-					                  IsBackground = true
-				                  };
+            await
+                CreateTempAppHostConfigAsync(websitePath, configFile, httpPort, httpsPort, tempFilePath, iisExpressPath,
+                    customHostName);
 
-			startThread.Start();
-		}
+            string arguments = String.Format(
+                CultureInfo.InvariantCulture, "/config:\"{0}\" /site:{1}", tempFilePath,
+                string.Format("Ginkgo_{0}", httpPort));
 
-		async Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int port, Path tempFilePath,
-		                                   Path iisExpressPath)
-		{
-			var fileInfo = new FileInfo(tempFilePath.FullName);
+            var info = new ProcessStartInfo(iisExpressPath + @"\iisexpress.exe")
+                       {
+                           WindowStyle = ProcessWindowStyle.Normal,
+                           ErrorDialog = true,
+                           LoadUserProfile = true,
+                           CreateNoWindow = false,
+                           Arguments = arguments,
+                           UseShellExecute = false,
+                       };
 
-			if (!Directory.Exists(fileInfo.Directory.FullName))
-			{
-				Directory.CreateDirectory(fileInfo.Directory.FullName);
-			}
+            var startThread = new Thread(async () => await StartIisExpressAsync(info))
+                              {
+                                  IsBackground = true
+                              };
 
-			File.Copy(templateConfigFilePath.FullName, tempFilePath.FullName, overwrite: true);
+            startThread.Start();
+        }
 
-			if (!websitePath.Exists)
-			{
-				throw new InvalidOperationException("The web site path is null or empty");
-			}
+        async Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int httpPort,
+            int httpsPort, Path tempFilePath,
+            Path iisExpressPath, string customHostName = "")
+        {
+            var fileInfo = new FileInfo(tempFilePath.FullName);
 
-			AddSiteToTempApphostConfig(port, tempFilePath, websitePath, iisExpressPath);
-		}
+            if (!Directory.Exists(fileInfo.Directory.FullName))
+            {
+                Directory.CreateDirectory(fileInfo.Directory.FullName);
+            }
 
-		static Path TempFilePathForAppHostConfig(int port)
-		{
-			var tempPath = System.IO.Path.GetTempPath();
+            File.Copy(templateConfigFilePath.FullName, tempFilePath.FullName, overwrite: true);
 
-			var tempFilePath = Path.Combine(tempPath, "Ginkgo", "IntegrationTests", port.ToString(),
-			                                "applicationhost.config");
-			return tempFilePath;
-		}
+            if (!websitePath.Exists)
+            {
+                throw new InvalidOperationException("The web site path is null or empty");
+            }
 
-		static Path GetAppCmdPath(Path iisExpressPath)
-		{
-			return Path.Combine(iisExpressPath, "appcmd.exe");
-		}
+            AddSiteToTempApphostConfig(httpPort, httpsPort, tempFilePath, websitePath, iisExpressPath, customHostName);
+        }
 
-		void AddSiteToTempApphostConfig(int port, Path tempFilePath, Path tempPath, Path iisExpressPath)
-		{
-			const string name = "Ginkgo";
+        static Path TempFilePathForAppHostConfig(int port)
+        {
+            string tempPath = System.IO.Path.GetTempPath();
 
-			Port = port;
+            Path tempFilePath = Path.Combine(tempPath, "Ginkgo", "IntegrationTests",
+                port.ToString(CultureInfo.InvariantCulture),
+                "applicationhost.config");
+            return tempFilePath;
+        }
 
-			Console.WriteLine("Setting up new IIS Express instance on port {0} with configuration file '{1}", Port, tempFilePath);
+        static Path GetAppCmdPath(Path iisExpressPath)
+        {
+            return Path.Combine(iisExpressPath, "appcmd.exe");
+        }
 
-			var commands = new List<string>
-				               {
-					               string.Format(
-						               @"set config -section:system.applicationHost/sites /+""[name='{2}_{0}',id='{0}']"" /commit:apphost /AppHostConfig:""{1}""",
-						               port, tempFilePath, name),
-					               string.Format(
-						               @"set config -section:system.applicationHost/sites /+""[name='{2}_{0}',id='{0}'].bindings.[protocol='https',bindingInformation='*:{0}:localhost']"" /commit:apphost /AppHostConfig:""{1}""",
-						               port, tempFilePath, name),
-					               string.Format(
-						               @"set config -section:system.applicationHost/sites /+""[name='{2}_{0}',id='{0}'].[path='/',applicationPool='Clr4IntegratedAppPool']"" /commit:apphost /AppHostConfig:""{1}""",
-						               port, tempFilePath, name),
-					               string.Format(
-						               @"set config -section:system.applicationHost/sites /+""[name='{3}_{0}',id='{0}'].[path='/'].[path='/',physicalPath='{2}']"" /commit:apphost /AppHostConfig:""{1}""",
-						               port, tempFilePath, tempPath, name),
-				               };
+        void AddSiteToTempApphostConfig(int httpPort, int httpsPort, Path tempFilePath, Path tempPath,
+            Path iisExpressPath, string customHostName = "")
+        {
+            StringBuilder sb = new StringBuilder();
 
-			var exePath = GetAppCmdPath(iisExpressPath).FullName;
+            sb.AppendLine("Using: ");
+            sb.AppendLine("HTTP port: " + httpPort.ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine("HTTPS port: " + httpsPort.ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine("Temp file: " + tempFilePath);
+            sb.AppendLine("Temp path: " + tempPath);
+            sb.AppendLine("IIS Express path: " + iisExpressPath);
+            sb.AppendLine("Custom host name " + customHostName);
 
-			foreach (var command in commands)
-			{
-				var process = new Process
-					              {
-						              StartInfo = new ProcessStartInfo(exePath)
-							                          {
-								                          Arguments = command,
-								                          RedirectStandardOutput = true,
-								                          UseShellExecute = false,
-								                          RedirectStandardError = true
-							                          }
-					              };
+            Console.WriteLine(sb.ToString());
 
-				process.OutputDataReceived += (sender, args) => Console.WriteLine(args.Data);
-				process.ErrorDataReceived += (sender, args) => Console.WriteLine(args.Data);
-				process.Start();
-				process.BeginOutputReadLine();
-				process.BeginErrorReadLine();
+            const string name = "Ginkgo";
 
-				process.WaitForExit();
-			}
-		}
+            Port = httpPort;
+            HttpsPort = httpsPort;
 
-		protected virtual void Dispose(bool disposing)
-		{
-			if (_isDisposed)
-			{
-				return;
-			}
-		    int waitCounter = 1;
+            Console.WriteLine("Setting up new IIS Express instance on port {0} with configuration file '{1}", Port,
+                tempFilePath);
 
-		    while(!_processId.HasValue)
-		    {
-		        Thread.Sleep(TimeSpan.FromMilliseconds(50));
-                Console.WriteLine("Waiting {0} milliseconds", 50 * waitCounter);
-		        waitCounter++;
-		    }
+            var commands = new List<string>
+                           {
+                           };
 
-		    Console.WriteLine("Disposing IIS Express process");
+            string siteName = name + "_" + httpPort.ToString(CultureInfo.InvariantCulture);
+            string siteId = httpPort.ToString(CultureInfo.InvariantCulture);
 
-			if (disposing)
-			{
-				int? pid;
+            commands.Add(string.Format(
+                @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}']"" /commit:apphost /AppHostConfig:""{2}""",
+                siteName, siteId, tempFilePath));
 
-				if (_process != null)
-				{
-					pid = _process.Id;
-					Console.WriteLine("Closed IIS Express");
-					if (!_process.HasExited)
-					{
-						_process.Kill();
-					}
+            commands.Add(string.Format(
+                @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='http',bindingInformation='*:{2}:localhost']"" /commit:apphost /AppHostConfig:""{3}""",
+                siteName, siteId,
+                httpPort.ToString(CultureInfo.InvariantCulture),
+                tempFilePath));
 
-					using (_process)
+            commands.Add(string.Format(
+                @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='https',bindingInformation='*:{2}:localhost']"" /commit:apphost /AppHostConfig:""{3}""",
+                siteName,
+                siteId,
+                httpsPort.ToString(CultureInfo.InvariantCulture),
+                tempFilePath));
 
-						Console.WriteLine("Disposed IIS Express");
-					{
-					}
-				}
-				else
-				{
-				    pid = _processId;
-					Console.WriteLine("Process is null");
-				}
-                
-			    if (pid != null)
-			    {
-			        try
-			        {
-                        var process = Process.GetProcessById(pid.Value);
+            if (!string.IsNullOrWhiteSpace(customHostName))
+            {
+                commands.Add(string.Format(
+                    @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='http',bindingInformation='*:{2}:{3}']"" /commit:apphost /AppHostConfig:""{4}""",
+                    siteName,
+                    siteId,
+                    httpPort.ToString(CultureInfo.InvariantCulture),
+                    customHostName, tempFilePath));
 
-			            using (process)
-			            {
-			                Console.WriteLine("Killing IIS Express");
-			                if (!process.HasExited)
-			                {
-			                    process.Kill();
-			                }
-			            }
-			        }
-			        catch (Exception ex)
-			        {
-			        }
-			    }
-			    else
-			    {
+                commands.Add(string.Format(
+                    @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='https',bindingInformation='*:{2}:{3}']"" /commit:apphost /AppHostConfig:""{4}""",
+                    siteName,
+                    siteId,
+                    httpsPort.ToString(CultureInfo.InvariantCulture),
+                    customHostName, tempFilePath));
+            }
+
+            commands.Add(
+                string.Format(
+                    @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].[path='/',applicationPool='Clr4IntegratedAppPool']"" /commit:apphost /AppHostConfig:""{2}""",
+                    siteName,
+                    siteId,
+                    tempFilePath));
+            commands.Add(
+                string.Format(
+                    @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].[path='/'].[path='/',physicalPath='{2}']"" /commit:apphost /AppHostConfig:""{3}""",
+                    siteName,
+                    siteId,
+                    tempPath,
+                    tempFilePath));
+
+            string exePath = GetAppCmdPath(iisExpressPath).FullName;
+
+            foreach (string command in commands)
+            {
+                var process = new Process
+                              {
+                                  StartInfo = new ProcessStartInfo(exePath)
+                                              {
+                                                  Arguments = command,
+                                                  RedirectStandardOutput = true,
+                                                  UseShellExecute = false,
+                                                  RedirectStandardError = true
+                                              }
+                              };
+
+                process.OutputDataReceived += (sender, args) => Console.WriteLine(args.Data);
+                process.ErrorDataReceived += (sender, args) => Console.Error.WriteLine(args.Data);
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                process.WaitForExit();
+
+                if (process.ExitCode != 0)
+                {
+                    throw new InvalidOperationException("The process exited with code " + process.ExitCode);
+                }
+            }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+            int waitCounter = 1;
+
+            while (!_processId.HasValue)
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(50));
+                Console.WriteLine("Waiting {0} milliseconds", 50*waitCounter);
+                waitCounter++;
+            }
+
+            Console.WriteLine("Disposing IIS Express process");
+
+            if (disposing)
+            {
+                int? pid;
+
+                if (_process != null)
+                {
+                    pid = _process.Id;
+                    Console.WriteLine("Closed IIS Express");
+                    if (!_process.HasExited)
+                    {
+                        _process.Kill();
+                    }
+
+                    using (_process)
+
+                        Console.WriteLine("Disposed IIS Express");
+                    {
+                    }
+                }
+                else
+                {
+                    pid = _processId;
+                    Console.WriteLine("Process is null");
+                }
+
+                if (pid != null)
+                {
+                    try
+                    {
+                        Process process = Process.GetProcessById(pid.Value);
+
+                        using (process)
+                        {
+                            Console.WriteLine("Killing IIS Express");
+                            if (!process.HasExited)
+                            {
+                                process.Kill();
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                    }
+                }
+                else
+                {
                     Console.WriteLine("Could not find any process id to kill");
-			    }
-			}
+                }
+            }
 
-			if (_removeSiteOnExit)
-			{
-				try
-				{
-					if (WebsitePath.Exists)
-					{
-						var directoryInfo = new DirectoryInfo(WebsitePath.FullName);
+            if (_removeSiteOnExit)
+            {
+                try
+                {
+                    if (WebsitePath.Exists)
+                    {
+                        var directoryInfo = new DirectoryInfo(WebsitePath.FullName);
 
-						directoryInfo.Delete(true);
-					}
-				}
-				catch (IOException ex)
-				{
-					throw new IOException("Could not delete the website path '" + WebsitePath.FullName + "'", ex);
-				}
-			}
+                        directoryInfo.Delete(true);
+                    }
+                }
+                catch (IOException ex)
+                {
+                    throw new IOException("Could not delete the website path '" + WebsitePath.FullName + "'", ex);
+                }
+            }
 
-			_process = null;
-			_processId = null;
-			_isDisposed = true;
-		}
+            _process = null;
+            _processId = null;
+            _isDisposed = true;
+        }
 
-		static Path DetermineIisExpressDir()
-		{
-			const Environment.SpecialFolder programFiles = Environment.SpecialFolder.ProgramFilesX86;
+        static Path DetermineIisExpressDir()
+        {
+            const Environment.SpecialFolder programFiles = Environment.SpecialFolder.ProgramFilesX86;
 
-			var iisExpressPath = Path.Combine(Environment.GetFolderPath(programFiles), @"IIS Express");
+            Path iisExpressPath = Path.Combine(Environment.GetFolderPath(programFiles), @"IIS Express");
 
-			return iisExpressPath;
-		}
+            return iisExpressPath;
+        }
 
-		[SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes",
-			Justification = "Required here to ensure that the instance is disposed.")]
-		async Task StartIisExpressAsync(ProcessStartInfo info)
-		{
-			try
-			{
-				Console.WriteLine("Starting IIS Express");
-				_process = Process.Start(info);
+        [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes",
+            Justification = "Required here to ensure that the instance is disposed.")]
+        async Task StartIisExpressAsync(ProcessStartInfo info)
+        {
+            try
+            {
+                Console.WriteLine("Starting IIS Express");
+                _process = Process.Start(info);
 
-			    if (_process != null)
-			    {
+                if (_process != null)
+                {
+                    _processId = _process.Id;
+                    Console.WriteLine("Running IIS Express with id {0}, waiting for exit", _processId);
 
-			        _processId = _process.Id;
-			        Console.WriteLine("Running IIS Express with id {0}, waiting for exit", _processId);
-
-			        if (!_process.HasExited)
-			        {
-			            _process.WaitForExit();
-			        }
-			    }
-			    else
-			    {
-			        Console.WriteLine("Could not get any process reference");
-			    }
-			}
-			catch (ThreadAbortException)
-			{
-				Console.WriteLine("The IIS Express thread was aborted");
-				Dispose();
-			}
-			catch (Exception exception)
-			{
-				Console.WriteLine("Exception when running IIS Express");
-				Console.WriteLine(exception);
-				Dispose();
-			}
-		}
-	}
+                    if (!_process.HasExited)
+                    {
+                        _process.WaitForExit();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Could not get any process reference");
+                }
+            }
+            catch (ThreadAbortException)
+            {
+                Console.WriteLine("The IIS Express thread was aborted");
+                Dispose();
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine("Exception when running IIS Express");
+                Console.WriteLine(exception);
+                Dispose();
+            }
+        }
+    }
 }
