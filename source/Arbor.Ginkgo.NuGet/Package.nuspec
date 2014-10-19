@@ -1,33 +1,34 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-	<id>Arbor.Ginkgo</id>
-	<version>0.0.1-alpha</version>
-	<title>Arbor Ginkgo</title>
-	<authors>Niklas Lundberg</authors>
-	<owners></owners>
-	<description>
-	  Automating integration testing with IIS Express 8.0+
-	</description>
-	<releaseNotes>
-	</releaseNotes>
-	<summary>
-	  
-	</summary>
-	<language>en-US</language>
-	<projectUrl>https://nuget.org/packages/NuGet.Arbor.Ginkgo</projectUrl>
-	<iconUrl>https://nuget.org/Content/Images/packageDefaultIcon-50x50.png</iconUrl>
-	<requireLicenseAcceptance>false</requireLicenseAcceptance>
-	<licenseUrl>http://opensource.org/licenses/MIT</licenseUrl>
-	<copyright>Copyright Niklas Lundberg 2013-2014</copyright>
-	<dependencies>
-		<group targetFramework="net45">         
-		</group>
-	</dependencies>
-	<references></references>
-	<tags></tags>
+  <id>Arbor.Ginkgo</id>
+  <version>0.0.1-alpha</version>
+  <title>Arbor Ginkgo</title>
+  <authors>Niklas Lundberg</authors>
+  <owners></owners>
+  <description>
+    Automating integration testing with IIS Express 8.0+
+  </description>
+  <releaseNotes>
+  </releaseNotes>
+  <summary>
+    
+  </summary>
+  <language>en-US</language>
+  <projectUrl>https://nuget.org/packages/NuGet.Arbor.Ginkgo</projectUrl>
+  <iconUrl>https://nuget.org/Content/Images/packageDefaultIcon-50x50.png</iconUrl>
+  <requireLicenseAcceptance>false</requireLicenseAcceptance>
+  <licenseUrl>http://opensource.org/licenses/MIT</licenseUrl>
+  <copyright>Copyright Niklas Lundberg 2013-2014</copyright>
+  <dependencies>
+    <group targetFramework="net45">
+      <dependency id="Microsoft.Web.Xdt" version="[2.1.1, 3.0.0)" />
+    </group>
+  </dependencies>
+  <references></references>
+  <tags></tags>
   </metadata>
   <files>
-	  <file src="bin\Release\Arbor.Ginkgo.dll" target="lib\net45\Arbor.Ginkgo.dll" />	
+    <file src="bin\Release\Arbor.Ginkgo.dll" target="lib\net45\Arbor.Ginkgo.dll" />	
   </files>
 </package>
