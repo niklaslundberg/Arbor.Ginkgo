@@ -13,16 +13,17 @@ namespace Arbor.Ginkgo
     {
         public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
             Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null,
-            string tempPath = null, bool removeSiteOnExit = true)
+            string tempPath = null, bool removeSiteOnExit = true, int sslTcpPort = -1, string customHostName = "")
         {
-            int port = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailablePort();
+            int httpPort = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailableHttpPort();
+            int httpsPort = sslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(exclude: httpPort);
 
             var iisExpress = new IisExpress();
 
             Path tempWebsitePath = tempPath != null
                 ? new Path(tempPath)
                 : Path.Combine(System.IO.Path.GetTempPath(), "Ginkgo", "TempWebsite",
-                    port.ToString(CultureInfo.InvariantCulture));
+                    httpPort.ToString(CultureInfo.InvariantCulture));
 
             CopyWebsiteToTempPath(websitePath, tempWebsitePath);
 
@@ -35,7 +36,9 @@ namespace Arbor.Ginkgo
                 onCopiedWebsite(tempWebsitePath);
             }
 
-            await iisExpress.Start(templatePath, port, tempWebsitePath, removeSiteOnExit);
+            await
+                iisExpress.StartAsync(templatePath, httpPort, httpsPort, tempWebsitePath, removeSiteOnExit,
+                    customHostName);
             return iisExpress;
         }
 
@@ -109,17 +112,37 @@ namespace Arbor.Ginkgo
                                                                   bannedFileNames
                                                               };
 
-           var itemsCopied =  originalWebsiteDirectory.CopyTo(tempDirectory, filesToExclude: filesToExclude,
+            int itemsCopied = originalWebsiteDirectory.CopyTo(tempDirectory, filesToExclude: filesToExclude,
                 directoriesToExclude: bannedDirectories);
 
             Console.WriteLine("Copied {0} items", itemsCopied);
         }
 
-        static int GetAvailablePort()
+        static int GetAvailableHttpPort(int? exclude = null)
+        {
+            var range = new PortPoolRange(45000, 100);
+
+            var excluded = new List<int>();
+
+            if (exclude.HasValue)
+            {
+                excluded.Add(exclude.Value);
+            }
+
+            return TcpHelper.GetAvailablePort(range, excluded);
+        }
+        static int GetAvailableHttpsPort(int? exclude = null)
         {
             var range = new PortPoolRange(44300, 100);
 
-            return TcpHelper.GetAvailablePort(range);
+            var excluded = new List<int>();
+
+            if (exclude.HasValue)
+            {
+                excluded.Add(exclude.Value);
+            }
+
+            return TcpHelper.GetAvailablePort(range, excluded);
         }
     }
 }
