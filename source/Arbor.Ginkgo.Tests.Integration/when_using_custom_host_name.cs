@@ -36,14 +36,14 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             templatePath = Path.Combine(sourceRoot, "source", "Arbor.Ginkgo.Tests.Integration", "applicationHost.config");
 
-            tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo");
+            tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", Guid.NewGuid().ToString());
         };
 
         Because of =
             () =>
             {
                 customHostName = "iisexpresstest.local";
-                iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName, customHostName: customHostName, onCopiedWebsite: OnCopiedWebsite, sslTcpPort: 44300, tcpPort:55556).Result;
+                iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName, customHostName: customHostName, onCopiedWebsite: OnCopiedWebsite, sslTcpPort: 44300, tcpPort:55556, httpsEnabled:true).Result;
             };
 
         static void OnCopiedWebsite(Path path)

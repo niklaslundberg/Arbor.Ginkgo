@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using Arbor.Aesculus.Core;
 using Machine.Specifications;
 
@@ -31,7 +32,7 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             templatePath = Path.Combine(sourceRoot, "source", "applicationHost.config");
 
-            tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo");
+            tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", Guid.NewGuid().ToString());
         };
 
         Because of =

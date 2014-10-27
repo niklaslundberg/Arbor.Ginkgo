@@ -13,16 +13,21 @@ namespace Arbor.Ginkgo
     {
         public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
             Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null,
-            string tempPath = null, bool removeSiteOnExit = true, int sslTcpPort = -1, string customHostName = "")
+            string tempPath = null, bool removeSiteOnExit = true, int sslTcpPort = -1, string customHostName = "", bool httpsEnabled = false)
         {
             int httpPort = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailableHttpPort();
-            int httpsPort = sslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(exclude: httpPort);
+            int httpsPort = -1;
+
+            if (httpsEnabled)
+            {
+                httpsPort = sslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(exclude: httpPort);
+            }
 
             var iisExpress = new IisExpress();
 
             Path tempWebsitePath = tempPath != null
                 ? new Path(tempPath)
-                : Path.Combine(System.IO.Path.GetTempPath(), "Ginkgo", "TempWebsite",
+                : Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", "TempWebsite", Guid.NewGuid().ToString(),
                     httpPort.ToString(CultureInfo.InvariantCulture));
 
             CopyWebsiteToTempPath(websitePath, tempWebsitePath);
@@ -60,6 +65,8 @@ namespace Arbor.Ginkgo
                 string fullName = new FileInfo(targetFile.FullName).Directory.FullName;
                 if (Directory.Exists(fullName))
                 {
+                    Console.WriteLine("Transforming root file '{0}' with transformation '{1}' into '{2}'", transformRootFile.FullName, transformationFile.FullName, targetFile.FullName);
+
                     var transformable = new XmlTransformableDocument();
                     transformable.Load(transformRootFile.FullName);
 
