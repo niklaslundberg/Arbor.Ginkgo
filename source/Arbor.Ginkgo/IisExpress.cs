@@ -36,6 +36,7 @@ namespace Arbor.Ginkgo
 
         public int Port { get; private set; }
         public int HttpsPort { get; private set; }
+        public int CustomHostNameHttpsPort { get; private set; }
 
         public Path WebsitePath
         {
@@ -48,8 +49,7 @@ namespace Arbor.Ginkgo
             GC.SuppressFinalize(this);
         }
 
-        public async Task StartAsync(Path configFile, int httpPort, int httpsPort, Path websitePath,
-            bool removeSiteOnExit = false, string customHostName = "")
+        public async Task StartAsync(Path configFile, int httpPort, int httpsPort, Path websitePath, bool removeSiteOnExit = false, string customHostName = "", int customHostNameHttpsPort = -1)
         {
 
             if (httpPort == httpsPort)
@@ -66,7 +66,7 @@ namespace Arbor.Ginkgo
 
             await
                 CreateTempAppHostConfigAsync(websitePath, configFile, httpPort, httpsPort, tempFilePath, iisExpressPath,
-                    customHostName);
+                    customHostName, customHostNameHttpsPort);
 
             string arguments = String.Format(
                 CultureInfo.InvariantCulture, "/config:\"{0}\" /site:{1}", tempFilePath,
@@ -90,9 +90,7 @@ namespace Arbor.Ginkgo
             startThread.Start();
         }
 
-        async Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int httpPort,
-            int httpsPort, Path tempFilePath,
-            Path iisExpressPath, string customHostName = "")
+        async Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int httpPort, int httpsPort, Path tempFilePath, Path iisExpressPath, string customHostName = "", int customHostNameHttpsPort = -1)
         {
             var fileInfo = new FileInfo(tempFilePath.FullName);
 
@@ -108,7 +106,7 @@ namespace Arbor.Ginkgo
                 throw new InvalidOperationException("The web site path is null or empty");
             }
 
-            AddSiteToTempApphostConfig(httpPort, httpsPort, tempFilePath, websitePath, iisExpressPath, customHostName);
+            AddSiteToTempApphostConfig(httpPort, httpsPort, tempFilePath, websitePath, iisExpressPath, customHostName, customHostNameHttpsPort);
         }
 
         static Path TempFilePathForAppHostConfig(int port)
@@ -126,8 +124,7 @@ namespace Arbor.Ginkgo
             return Path.Combine(iisExpressPath, "appcmd.exe");
         }
 
-        void AddSiteToTempApphostConfig(int httpPort, int httpsPort, Path tempFilePath, Path tempPath,
-            Path iisExpressPath, string customHostName = "")
+        void AddSiteToTempApphostConfig(int httpPort, int httpsPort, Path tempFilePath, Path tempPath, Path iisExpressPath, string customHostName = "", int customHostNameHttpsPort = -1)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -136,6 +133,10 @@ namespace Arbor.Ginkgo
             if (httpsPort >= 0)
             {
                 sb.AppendLine("HTTPS port: " + httpsPort.ToString(CultureInfo.InvariantCulture));
+            }
+            if (customHostNameHttpsPort >= 0)
+            {
+                sb.AppendLine("Custom host name HTTPS port: " + customHostNameHttpsPort.ToString(CultureInfo.InvariantCulture));
             }
             sb.AppendLine("Temp file: " + tempFilePath);
             sb.AppendLine("Temp path: " + tempPath);
@@ -151,6 +152,7 @@ namespace Arbor.Ginkgo
 
             Port = httpPort;
             HttpsPort = httpsPort;
+            CustomHostNameHttpsPort = customHostNameHttpsPort;
 
             Console.WriteLine("Setting up new IIS Express instance on port {0} with configuration file '{1}", Port,
                 tempFilePath);
@@ -191,7 +193,7 @@ namespace Arbor.Ginkgo
                     httpPort.ToString(CultureInfo.InvariantCulture),
                     customHostName, tempFilePath));
 
-                if (httpsPort >= 0)
+                if (customHostNameHttpsPort >= 0)
                 {
                     commands.Add(string.Format(
                         @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='https',bindingInformation='*:{2}:{3}']"" /commit:apphost /AppHostConfig:""{4}""",

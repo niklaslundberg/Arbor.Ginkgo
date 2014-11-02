@@ -13,14 +13,16 @@ namespace Arbor.Ginkgo
     {
         public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
             Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null,
-            string tempPath = null, bool removeSiteOnExit = true, int sslTcpPort = -1, string customHostName = "", bool httpsEnabled = false)
+            string tempPath = null, bool removeSiteOnExit = true, int sslTcpPort = -1, string customHostName = "", bool httpsEnabled = false, int customHostNameSslTcpPort = -1)
         {
             int httpPort = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailableHttpPort();
             int httpsPort = -1;
+            int customHostNameHttpsPort = -1;
 
             if (httpsEnabled)
             {
-                httpsPort = sslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(exclude: httpPort);
+                httpsPort = sslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(httpPort);
+                customHostNameHttpsPort = customHostNameSslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(httpPort, httpsPort);
             }
 
             var iisExpress = new IisExpress();
@@ -43,7 +45,7 @@ namespace Arbor.Ginkgo
 
             await
                 iisExpress.StartAsync(templatePath, httpPort, httpsPort, tempWebsitePath, removeSiteOnExit,
-                    customHostName);
+                    customHostName, customHostNameHttpsPort);
             return iisExpress;
         }
 
@@ -138,15 +140,15 @@ namespace Arbor.Ginkgo
 
             return TcpHelper.GetAvailablePort(range, excluded);
         }
-        static int GetAvailableHttpsPort(int? exclude = null)
+        static int GetAvailableHttpsPort(params int[] exclusions)
         {
-            var range = new PortPoolRange(44300, 100);
+            var range = new PortPoolRange(44330, 100);
 
             var excluded = new List<int>();
 
-            if (exclude.HasValue)
+            if (exclusions != null && exclusions.Any())
             {
-                excluded.Add(exclude.Value);
+                excluded.AddRange(exclusions);
             }
 
             return TcpHelper.GetAvailablePort(range, excluded);
