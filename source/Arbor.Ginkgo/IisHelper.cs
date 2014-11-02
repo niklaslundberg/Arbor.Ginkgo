@@ -22,7 +22,7 @@ namespace Arbor.Ginkgo
             if (httpsEnabled)
             {
                 httpsPort = sslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(httpPort);
-                customHostNameHttpsPort = customHostNameSslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(httpPort, httpsPort);
+                customHostNameHttpsPort = customHostNameSslTcpPort >= IPEndPoint.MinPort ? customHostNameSslTcpPort : GetAvailableHttpsPort(httpPort, httpsPort);
             }
 
             var iisExpress = new IisExpress();

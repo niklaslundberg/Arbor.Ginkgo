@@ -199,7 +199,7 @@ namespace Arbor.Ginkgo
                         @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='https',bindingInformation='*:{2}:{3}']"" /commit:apphost /AppHostConfig:""{4}""",
                         siteName,
                         siteId,
-                        httpsPort.ToString(CultureInfo.InvariantCulture),
+                        customHostNameHttpsPort.ToString(CultureInfo.InvariantCulture),
                         customHostName, tempFilePath));
                 }
             }
