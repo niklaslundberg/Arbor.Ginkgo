@@ -36,6 +36,7 @@ namespace Arbor.Ginkgo
 
         public int Port { get; private set; }
         public int HttpsPort { get; private set; }
+        public int CustomHostNameHttpsPort { get; private set; }
 
         public Path WebsitePath
         {
@@ -48,8 +49,7 @@ namespace Arbor.Ginkgo
             GC.SuppressFinalize(this);
         }
 
-        public async Task StartAsync(Path configFile, int httpPort, int httpsPort, Path websitePath,
-            bool removeSiteOnExit = false, string customHostName = "")
+        public async Task StartAsync(Path configFile, int httpPort, int httpsPort, Path websitePath, bool removeSiteOnExit = false, string customHostName = "", int customHostNameHttpsPort = -1)
         {
 
             if (httpPort == httpsPort)
@@ -66,11 +66,11 @@ namespace Arbor.Ginkgo
 
             await
                 CreateTempAppHostConfigAsync(websitePath, configFile, httpPort, httpsPort, tempFilePath, iisExpressPath,
-                    customHostName);
+                    customHostName, customHostNameHttpsPort);
 
             string arguments = String.Format(
                 CultureInfo.InvariantCulture, "/config:\"{0}\" /site:{1}", tempFilePath,
-                string.Format("Ginkgo_{0}", httpPort));
+                string.Format("Arbor_Ginkgo_{0}", httpPort));
 
             var info = new ProcessStartInfo(iisExpressPath + @"\iisexpress.exe")
                        {
@@ -90,9 +90,7 @@ namespace Arbor.Ginkgo
             startThread.Start();
         }
 
-        async Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int httpPort,
-            int httpsPort, Path tempFilePath,
-            Path iisExpressPath, string customHostName = "")
+        async Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int httpPort, int httpsPort, Path tempFilePath, Path iisExpressPath, string customHostName = "", int customHostNameHttpsPort = -1)
         {
             var fileInfo = new FileInfo(tempFilePath.FullName);
 
@@ -108,14 +106,14 @@ namespace Arbor.Ginkgo
                 throw new InvalidOperationException("The web site path is null or empty");
             }
 
-            AddSiteToTempApphostConfig(httpPort, httpsPort, tempFilePath, websitePath, iisExpressPath, customHostName);
+            AddSiteToTempApphostConfig(httpPort, httpsPort, tempFilePath, websitePath, iisExpressPath, customHostName, customHostNameHttpsPort);
         }
 
         static Path TempFilePathForAppHostConfig(int port)
         {
             string tempPath = System.IO.Path.GetTempPath();
 
-            Path tempFilePath = Path.Combine(tempPath, "Ginkgo", "IntegrationTests",
+            Path tempFilePath = Path.Combine(tempPath, "Arbor.Ginkgo", "IntegrationTests", Guid.NewGuid().ToString(),
                 port.ToString(CultureInfo.InvariantCulture),
                 "applicationhost.config");
             return tempFilePath;
@@ -126,25 +124,35 @@ namespace Arbor.Ginkgo
             return Path.Combine(iisExpressPath, "appcmd.exe");
         }
 
-        void AddSiteToTempApphostConfig(int httpPort, int httpsPort, Path tempFilePath, Path tempPath,
-            Path iisExpressPath, string customHostName = "")
+        void AddSiteToTempApphostConfig(int httpPort, int httpsPort, Path tempFilePath, Path tempPath, Path iisExpressPath, string customHostName = "", int customHostNameHttpsPort = -1)
         {
             StringBuilder sb = new StringBuilder();
 
             sb.AppendLine("Using: ");
             sb.AppendLine("HTTP port: " + httpPort.ToString(CultureInfo.InvariantCulture));
-            sb.AppendLine("HTTPS port: " + httpsPort.ToString(CultureInfo.InvariantCulture));
+            if (httpsPort >= 0)
+            {
+                sb.AppendLine("HTTPS port: " + httpsPort.ToString(CultureInfo.InvariantCulture));
+            }
+            if (customHostNameHttpsPort >= 0)
+            {
+                sb.AppendLine("Custom host name HTTPS port: " + customHostNameHttpsPort.ToString(CultureInfo.InvariantCulture));
+            }
             sb.AppendLine("Temp file: " + tempFilePath);
             sb.AppendLine("Temp path: " + tempPath);
             sb.AppendLine("IIS Express path: " + iisExpressPath);
-            sb.AppendLine("Custom host name " + customHostName);
+            if (!string.IsNullOrWhiteSpace(customHostName) && !customHostName.Equals("localhost", StringComparison.InvariantCultureIgnoreCase))
+            {
+                sb.AppendLine("Custom host name " + customHostName);
+            }
 
             Console.WriteLine(sb.ToString());
 
-            const string name = "Ginkgo";
+            const string name = "Arbor_Ginkgo";
 
             Port = httpPort;
             HttpsPort = httpsPort;
+            CustomHostNameHttpsPort = customHostNameHttpsPort;
 
             Console.WriteLine("Setting up new IIS Express instance on port {0} with configuration file '{1}", Port,
                 tempFilePath);
@@ -166,14 +174,17 @@ namespace Arbor.Ginkgo
                 httpPort.ToString(CultureInfo.InvariantCulture),
                 tempFilePath));
 
-            commands.Add(string.Format(
-                @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='https',bindingInformation='*:{2}:localhost']"" /commit:apphost /AppHostConfig:""{3}""",
-                siteName,
-                siteId,
-                httpsPort.ToString(CultureInfo.InvariantCulture),
-                tempFilePath));
+            if (httpsPort >= 0)
+            {
+                commands.Add(string.Format(
+                    @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='https',bindingInformation='*:{2}:localhost']"" /commit:apphost /AppHostConfig:""{3}""",
+                    siteName,
+                    siteId,
+                    httpsPort.ToString(CultureInfo.InvariantCulture),
+                    tempFilePath));
+            }
 
-            if (!string.IsNullOrWhiteSpace(customHostName))
+            if (!string.IsNullOrWhiteSpace(customHostName) && !customHostName.Equals("localhost", StringComparison.InvariantCultureIgnoreCase))
             {
                 commands.Add(string.Format(
                     @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='http',bindingInformation='*:{2}:{3}']"" /commit:apphost /AppHostConfig:""{4}""",
@@ -182,12 +193,15 @@ namespace Arbor.Ginkgo
                     httpPort.ToString(CultureInfo.InvariantCulture),
                     customHostName, tempFilePath));
 
-                commands.Add(string.Format(
-                    @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='https',bindingInformation='*:{2}:{3}']"" /commit:apphost /AppHostConfig:""{4}""",
-                    siteName,
-                    siteId,
-                    httpsPort.ToString(CultureInfo.InvariantCulture),
-                    customHostName, tempFilePath));
+                if (customHostNameHttpsPort >= 0)
+                {
+                    commands.Add(string.Format(
+                        @"set config -section:system.applicationHost/sites /+""[name='{0}',id='{1}'].bindings.[protocol='https',bindingInformation='*:{2}:{3}']"" /commit:apphost /AppHostConfig:""{4}""",
+                        siteName,
+                        siteId,
+                        customHostNameHttpsPort.ToString(CultureInfo.InvariantCulture),
+                        customHostName, tempFilePath));
+                }
             }
 
             commands.Add(
@@ -208,6 +222,11 @@ namespace Arbor.Ginkgo
 
             foreach (string command in commands)
             {
+                var processInfo = string.Format("'{0}' {1}", exePath, command);
+
+                Console.WriteLine("Executing {0}{1}", Environment.NewLine, processInfo);
+                Console.WriteLine();
+
                 var process = new Process
                               {
                                   StartInfo = new ProcessStartInfo(exePath)
@@ -219,17 +238,29 @@ namespace Arbor.Ginkgo
                                               }
                               };
 
-                process.OutputDataReceived += (sender, args) => Console.WriteLine(args.Data);
-                process.ErrorDataReceived += (sender, args) => Console.Error.WriteLine(args.Data);
+                process.OutputDataReceived += (sender, args) =>
+                {
+                    if (args.Data != null)
+                    {
+                        Console.WriteLine(args.Data);
+                    }
+                };
+                process.ErrorDataReceived += (sender, args) =>
+                {
+                    if (args.Data != null)
+                    {
+                        Console.Error.WriteLine(args.Data);
+                    }
+                };
                 process.Start();
-                process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
+                process.BeginOutputReadLine();
 
                 process.WaitForExit();
 
                 if (process.ExitCode != 0)
                 {
-                    throw new InvalidOperationException("The process exited with code " + process.ExitCode);
+                    throw new InvalidOperationException(string.Format("The process {1}{0}{1} exited with code {2}", processInfo, Environment.NewLine, process.ExitCode));
                 }
             }
         }
