@@ -2,7 +2,7 @@
 <package >
   <metadata>
   <id>Arbor.Ginkgo</id>
-  <version>0.0.1-alpha</version>
+  <version>$version$</version>
   <title>Arbor Ginkgo</title>
   <authors>Niklas Lundberg</authors>
   <owners></owners>
@@ -29,6 +29,6 @@
   <tags></tags>
   </metadata>
   <files>
-    <file src="bin\Release\Arbor.Ginkgo.dll" target="lib\net45\Arbor.Ginkgo.dll" />	
+    <file src="bin\$configuration$\Arbor.Ginkgo.dll" target="lib\net45\Arbor.Ginkgo.dll" />	
   </files>
 </package>
