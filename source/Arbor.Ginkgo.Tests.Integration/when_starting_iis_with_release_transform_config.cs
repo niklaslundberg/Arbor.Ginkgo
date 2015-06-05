@@ -24,7 +24,7 @@ namespace Arbor.Ginkgo.Tests.Integration
             tcpPort = 55443;
             ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
 
-            string sourceRoot = VcsPathHelper.FindVcsRootPath();
+            string sourceRoot = VcsTestPathHelper.FindVcsRootPath();
 
             Path websitePath = Path.Combine(sourceRoot, "source", "Arbor.Ginkgo.Tests.Integration.WebApp");
 
