@@ -2,6 +2,7 @@ packages
 source/packages
 Artifacts
 /_patchedAssemblyInfos
+.vs
 
 #################
 ## Eclipse
