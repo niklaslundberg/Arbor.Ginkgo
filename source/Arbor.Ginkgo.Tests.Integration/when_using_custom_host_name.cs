@@ -30,7 +30,7 @@ namespace Arbor.Ginkgo.Tests.Integration
         Establish context = () =>
         {
             ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
-            string sourceRoot = VcsPathHelper.FindVcsRootPath();
+            string sourceRoot = VcsTestPathHelper.FindVcsRootPath();
 
             websitePath = Path.Combine(sourceRoot, "source", "Arbor.Ginkgo.Tests.Integration.WebApp");
 

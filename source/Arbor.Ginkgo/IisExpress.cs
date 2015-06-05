@@ -7,6 +7,10 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Directory = Alphaleonis.Win32.Filesystem.Directory;
+using DirectoryInfo = Alphaleonis.Win32.Filesystem.DirectoryInfo;
+using File = Alphaleonis.Win32.Filesystem.File;
+using FileInfo = Alphaleonis.Win32.Filesystem.FileInfo;
 
 namespace Arbor.Ginkgo
 {
@@ -90,7 +94,7 @@ namespace Arbor.Ginkgo
             startThread.Start();
         }
 
-        async Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int httpPort, int httpsPort, Path tempFilePath, Path iisExpressPath, string customHostName = "", int customHostNameHttpsPort = -1)
+        Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int httpPort, int httpsPort, Path tempFilePath, Path iisExpressPath, string customHostName = "", int customHostNameHttpsPort = -1)
         {
             var fileInfo = new FileInfo(tempFilePath.FullName);
 
@@ -107,6 +111,8 @@ namespace Arbor.Ginkgo
             }
 
             AddSiteToTempApphostConfig(httpPort, httpsPort, tempFilePath, websitePath, iisExpressPath, customHostName, customHostNameHttpsPort);
+
+            return Task.FromResult(0);
         }
 
         static Path TempFilePathForAppHostConfig(int port)
@@ -324,6 +330,7 @@ namespace Arbor.Ginkgo
                     }
                     catch (Exception ex)
                     {
+                        Console.Error.WriteLine("Could not kill process with id {0}, {1}", pid, ex);
                     }
                 }
                 else
@@ -365,7 +372,7 @@ namespace Arbor.Ginkgo
 
         [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes",
             Justification = "Required here to ensure that the instance is disposed.")]
-        async Task StartIisExpressAsync(ProcessStartInfo info)
+        Task StartIisExpressAsync(ProcessStartInfo info)
         {
             try
             {
@@ -398,6 +405,8 @@ namespace Arbor.Ginkgo
                 Console.WriteLine(exception);
                 Dispose();
             }
+
+            return Task.FromResult(0);
         }
     }
 }

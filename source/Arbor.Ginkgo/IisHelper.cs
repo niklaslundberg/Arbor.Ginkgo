@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Alphaleonis.Win32.Filesystem;
 using Microsoft.Web.XmlTransform;
 
 namespace Arbor.Ginkgo
@@ -101,9 +101,9 @@ namespace Arbor.Ginkgo
             Console.WriteLine("Creating temp directory {0}", tempDirectory.FullName);
             tempDirectory.Create();
 
-            var bannedExtensionList = new List<string> {".user", ".cs", ".csproj", ".dotSettings", ".suo"};
-            var bannedFiles = new List<string> {"packages.config"};
-            var bannedDirectories = new List<string> {"obj"};
+            var bannedExtensionList = new List<string> {".user", ".cs", ".csproj", ".dotSettings", ".suo", ".xproj"};
+            var bannedFiles = new List<string> {"packages.config", "project.json", "project.lock.json","config.json", "bower.json", "package.json", "gruntfile.json"};
+            var bannedDirectories = new List<string> {"obj", "node_modules", "bower_components"};
 
             Predicate<FileInfo> bannedExtensions =
                 file =>
