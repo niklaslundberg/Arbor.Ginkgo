@@ -101,9 +101,40 @@ namespace Arbor.Ginkgo
             Console.WriteLine("Creating temp directory {0}", tempDirectory.FullName);
             tempDirectory.Create();
 
-            var bannedExtensionList = new List<string> {".user", ".cs", ".csproj", ".dotSettings", ".suo", ".xproj"};
-            var bannedFiles = new List<string> {"packages.config", "project.json", "project.lock.json","config.json", "bower.json", "package.json", "gruntfile.json"};
-            var bannedDirectories = new List<string> {"obj", "node_modules", "bower_components"};
+            var bannedExtensionList = new List<string>
+                                          {
+                                              ".user",
+                                              ".cs",
+                                              ".csproj",
+                                              ".dotSettings",
+                                              ".suo",
+                                              ".xproj",
+                                              ".targets",
+                                              ".nuspec",
+                                              ".orig",
+                                              ".ncrunchproject"
+                                          };
+
+            var bannedFiles = new List<string>
+                                  {
+                                      "packages.config",
+                                      "project.json",
+                                      "project.lock.json",
+                                      "config.json",
+                                      "bower.json",
+                                      "package.json",
+                                      "gruntfile.json",
+                                      "Microsoft.CodeAnalysis.Analyzers.dll",
+                                      "Microsoft.Build.Tasks.CodeAnalysis.dll",
+                                      "csc.exe",
+                                      "Microsoft.CodeAnalysis.CSharp.dll",
+                                      "Microsoft.CodeAnalysis.VisualBasic.dll",
+                                      "vbc.exe",
+                                      "VBCSCompiler.exe",
+                                      "web.debug.config",
+                                      "web.release.config"
+                                  };
+            var bannedDirectories = new List<string> {"obj", "node_modules", "bower_components", "roslyn"};
 
             Predicate<FileInfo> bannedExtensions =
                 file =>
