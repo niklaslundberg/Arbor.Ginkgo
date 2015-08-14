@@ -81,7 +81,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Global.asax" />
-    <Content Include="roslyn\Dummy.txt" />
+    <Content Include="roslyn\Microsoft.CodeAnalysis.Analyzers.dll" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>

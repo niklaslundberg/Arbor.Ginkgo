@@ -125,16 +125,13 @@ namespace Arbor.Ginkgo
                                       "package.json",
                                       "gruntfile.json",
                                       "Microsoft.CodeAnalysis.Analyzers.dll",
-                                      "Microsoft.Build.Tasks.CodeAnalysis.dll",
-                                      "csc.exe",
-                                      "Microsoft.CodeAnalysis.CSharp.dll",
                                       "Microsoft.CodeAnalysis.VisualBasic.dll",
-                                      "vbc.exe",
+                                      "Microsoft.Build.Tasks.CodeAnalysis.dll",
                                       "VBCSCompiler.exe",
                                       "web.debug.config",
                                       "web.release.config"
                                   };
-            var bannedDirectories = new List<string> {"obj", "node_modules", "bower_components", "roslyn"};
+            var bannedDirectories = new List<string> {"obj", "node_modules", "bower_components"};
 
             Predicate<FileInfo> bannedExtensions =
                 file =>
