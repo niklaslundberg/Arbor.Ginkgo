@@ -46,10 +46,10 @@ namespace Arbor.Ginkgo.Tests.Integration
             () =>
                 {
                     var directoryInfo = new DirectoryInfo(tempPath.FullName);
-                    directoryInfo.GetDirectories()
-                        .Select(dir => dir.Name)
+                    directoryInfo.GetFiles()
+                        .Select(file => file.Name)
                         .ToList()
-                        .ShouldNotContain("roslyn");
+                        .ShouldNotContain("Microsoft.CodeAnalysis.Analyzers.dll");
 
                     PrintDirectory(directoryInfo);
                 };

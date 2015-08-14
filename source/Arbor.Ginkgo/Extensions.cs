@@ -62,7 +62,7 @@ namespace Arbor.Ginkgo
                 copiedItems++;
             }
 
-            var files = sourceDirectory.EnumerateFiles().Where(file => filePredicates.All(predicate => !predicate(file)));
+            var files = sourceDirectory.EnumerateFiles().Where(file => filePredicates.All(predicate => !predicate(file))).ToList();
 
             foreach (FileInfo file in files)
             {
@@ -88,7 +88,7 @@ namespace Arbor.Ginkgo
 
                         Debug.WriteLine($"Copying directory '{subDirectoryInfo.Name}' to '{subDirectoryTempPath.FullName}'");
 
-                        copiedItems += subdir.CopyTo(subDirectoryInfo);
+                        copiedItems += subdir.CopyTo(subDirectoryInfo, copySubDirectories, filesToExclude, directoriesToExclude);
                     }
                 }
             }
