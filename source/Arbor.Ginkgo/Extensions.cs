@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using DirectoryInfo = Alphaleonis.Win32.Filesystem.DirectoryInfo;
@@ -7,95 +8,96 @@ using FileInfo = Alphaleonis.Win32.Filesystem.FileInfo;
 
 namespace Arbor.Ginkgo
 {
-	public static class FileExtensions
-	{
-		public static string NormalizePath(this string path)
-		{
-			if (string.IsNullOrWhiteSpace(path))
-			{
-				throw new ArgumentNullException("path");
-			}
+    public static class FileExtensions
+    {
+        public static string NormalizePath(this string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentNullException(nameof(path));
+            }
 
-			var normalizePath = path.Replace('/', '\\');
+            var normalizePath = path.Replace('/', '\\');
 
-			return normalizePath;
-		}
+            return normalizePath;
+        }
 
-		public static int CopyTo(this DirectoryInfo sourceDirectory, DirectoryInfo destinationDirectory,
-		                          bool copySubDirectories = true, IEnumerable<Predicate<FileInfo>> filesToExclude = null, IEnumerable<string> directoriesToExclude = null)
-		{
-		    var copiedItems = 0;
+        public static int CopyTo(this DirectoryInfo sourceDirectory, DirectoryInfo destinationDirectory,
+                                  bool copySubDirectories = true, IEnumerable<Predicate<FileInfo>> filesToExclude = null, IEnumerable<string> directoriesToExclude = null)
+        {
+            var copiedItems = 0;
 
-			if (sourceDirectory == null)
-			{
-				throw new ArgumentNullException("sourceDirectory");
-			}
+            if (sourceDirectory == null)
+            {
+                throw new ArgumentNullException(nameof(sourceDirectory));
+            }
 
-			if (destinationDirectory == null)
-			{
-				throw new ArgumentNullException("destinationDirectory");
-			}
+            if (destinationDirectory == null)
+            {
+                throw new ArgumentNullException(nameof(destinationDirectory));
+            }
 
-			if (!sourceDirectory.Exists)
-			{
-				throw new DirectoryNotFoundException(
-					string.Format("Source directory does not exist or could not be found: {0}", sourceDirectory.FullName));
-			}
-            
-			var filePredicates = filesToExclude ?? new List<Predicate<FileInfo>>();
-		    var excludedDirectories = directoriesToExclude ?? new List<string>(); 
+            if (!sourceDirectory.Exists)
+            {
+                throw new DirectoryNotFoundException(
+                    $"Source directory does not exist or could not be found: {sourceDirectory.FullName}");
+            }
 
-			if (destinationDirectory.Exists)
-			{
-				if (!destinationDirectory.IsEmpty())
-				{
-					var fileCount = destinationDirectory.GetFiles().Length;
-					var directoryCount = destinationDirectory.GetDirectories().Length;
-					throw new IOException(
-						string.Format(
-							"The folder '{0}' cannot be used as a target folder since there are {1} files and {2} folders in the folder",
-							destinationDirectory.FullName, fileCount, directoryCount));
-				}
-			}
-			else
-			{
-				destinationDirectory.Create();
-			    copiedItems++;
-			}
+            var filePredicates = filesToExclude ?? new List<Predicate<FileInfo>>();
+            var excludedDirectories = directoriesToExclude ?? new List<string>();
 
-			var files = sourceDirectory.EnumerateFiles().Where(file => filePredicates.All(predicate => !predicate(file)));
+            if (destinationDirectory.Exists)
+            {
+                if (!destinationDirectory.IsEmpty())
+                {
+                    var fileCount = destinationDirectory.GetFiles().Length;
+                    var directoryCount = destinationDirectory.GetDirectories().Length;
+                    throw new IOException(
+                        $"The folder '{destinationDirectory.FullName}' cannot be used as a target folder since there are {fileCount} files and {directoryCount} folders in the folder");
+                }
+            }
+            else
+            {
+                destinationDirectory.Create();
+                copiedItems++;
+            }
 
-			foreach (FileInfo file in files)
-			{
-				var temppath = Path.Combine(destinationDirectory.FullName, file.Name);
-				file.CopyTo(temppath.FullName, false);
-			    copiedItems++;
-			}
+            var files = sourceDirectory.EnumerateFiles().Where(file => filePredicates.All(predicate => !predicate(file)));
 
-			if (copySubDirectories)
-			{
-				DirectoryInfo[] subDirectory = sourceDirectory.GetDirectories();
+            foreach (FileInfo file in files)
+            {
+                var temppath = Path.Combine(destinationDirectory.FullName, file.Name);
+                Debug.WriteLine($"Copying file '{file.Name}' to '{temppath.FullName}'");
+                file.CopyTo(temppath.FullName, false);
+                copiedItems++;
+            }
 
-				foreach (DirectoryInfo subdir in subDirectory)
-				{
-				    if (
-				        !excludedDirectories.Any(
-				            excluded => subdir.Name.Equals(excluded, StringComparison.InvariantCultureIgnoreCase)))
-				    {
-				        var subDirectoryTempPath = Path.Combine(destinationDirectory.FullName, subdir.Name);
+            if (copySubDirectories)
+            {
+                DirectoryInfo[] subDirectory = sourceDirectory.GetDirectories();
 
-				        var subDirectoryInfo = new DirectoryInfo(subDirectoryTempPath.FullName);
+                foreach (DirectoryInfo subdir in subDirectory)
+                {
+                    if (
+                        !excludedDirectories.Any(
+                            excluded => subdir.Name.Equals(excluded, StringComparison.InvariantCultureIgnoreCase)))
+                    {
+                        var subDirectoryTempPath = Path.Combine(destinationDirectory.FullName, subdir.Name);
+
+                        var subDirectoryInfo = new DirectoryInfo(subDirectoryTempPath.FullName);
+
+                        Debug.WriteLine($"Copying directory '{subDirectoryInfo.Name}' to '{subDirectoryTempPath.FullName}'");
 
                         copiedItems += subdir.CopyTo(subDirectoryInfo);
-				    }
-				}
-			}
-		    return copiedItems;
-		}
+                    }
+                }
+            }
+            return copiedItems;
+        }
 
-		static bool IsEmpty(this DirectoryInfo directoryInfo)
-		{
-			return !directoryInfo.EnumerateFiles().Any() && !directoryInfo.EnumerateDirectories().Any();
-		}
-	}
+        static bool IsEmpty(this DirectoryInfo directoryInfo)
+        {
+            return !directoryInfo.EnumerateFiles().Any() && !directoryInfo.EnumerateDirectories().Any();
+        }
+    }
 }

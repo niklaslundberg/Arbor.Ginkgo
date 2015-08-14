@@ -3,6 +3,7 @@ source/packages
 Artifacts
 /_patchedAssemblyInfos
 .vs
+_NCrunch*
 
 #################
 ## Eclipse
