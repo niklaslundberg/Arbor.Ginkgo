@@ -21,7 +21,7 @@ namespace Arbor.Ginkgo.Tests.Integration
 
         Establish context = () =>
         {
-            tcpPort = 55443;
+            httpPort = 55443;
             ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
 
             string sourceRoot = VcsTestPathHelper.FindVcsRootPath();
@@ -31,7 +31,7 @@ namespace Arbor.Ginkgo.Tests.Integration
             Path templatePath = Path.Combine(sourceRoot, "source", "applicationHost.config");
 
             Task<IisExpress> startWebsite = IisHelper.StartWebsiteAsync(websitePath, templatePath,
-                path => Console.WriteLine("Using website folder " + path), transformConfiguration: "release", tcpPort: tcpPort);
+                path => Console.WriteLine("Using website folder " + path), transformConfiguration: "release", httpPort: httpPort);
 
             iis = startWebsite.Result;
         };
@@ -47,6 +47,6 @@ namespace Arbor.Ginkgo.Tests.Integration
         };
 
         It should_return_success_status_code = () => result.IsSuccessStatusCode.ShouldBeTrue();
-        static int tcpPort;
+        static int httpPort;
     }
 }

@@ -25,7 +25,7 @@ namespace Arbor.Ginkgo
 				}
 			}
 
-			throw new InvalidOperationException(string.Format("Could not find any TCP port in range {0}", range.Format()));
+			throw new InvalidOperationException($"Could not find any TCP port in range {range.Format()}");
 		}
 	}
 }

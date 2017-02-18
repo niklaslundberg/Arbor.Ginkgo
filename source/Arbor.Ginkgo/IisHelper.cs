@@ -12,17 +12,21 @@ namespace Arbor.Ginkgo
     public static class IisHelper
     {
         public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
-            Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null,
-            string tempPath = null, bool removeSiteOnExit = true, int sslTcpPort = -1, string customHostName = "", bool httpsEnabled = false, int customHostNameSslTcpPort = -1)
+            Action<Path> onCopiedWebsite = null, int httpPort = -1, string transformConfiguration = null,
+            string tempPath = null, bool removeSiteOnExit = true, int httpsPort = -1, string customHostName = "", bool httpsEnabled = false)
         {
-            int httpPort = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailableHttpPort();
-            int httpsPort = -1;
-            int customHostNameHttpsPort = -1;
+
+            if (httpPort > 0 && httpsPort == httpPort)
+            {
+                throw new ArgumentException($"HTTP port and https port cannot be the same, {httpPort}");
+            }
+
+            int usedHttpPort = httpPort >= IPEndPoint.MinPort ? httpPort : GetAvailableHttpPort();
+            int usedHttpsPort = -1;
 
             if (httpsEnabled)
             {
-                httpsPort = sslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(httpPort);
-                customHostNameHttpsPort = customHostNameSslTcpPort >= IPEndPoint.MinPort ? customHostNameSslTcpPort : GetAvailableHttpsPort(httpPort, httpsPort);
+                usedHttpsPort = httpsPort >= IPEndPoint.MinPort ? httpsPort : GetAvailableHttpsPort(usedHttpPort);
             }
 
             var iisExpress = new IisExpress();
@@ -38,14 +42,12 @@ namespace Arbor.Ginkgo
 
             TransformWebConfig(websitePath, transformConfiguration, tempWebsitePath);
 
-            if (onCopiedWebsite != null)
-            {
-                onCopiedWebsite(tempWebsitePath);
-            }
+            onCopiedWebsite?.Invoke(tempWebsitePath);
 
             await
-                iisExpress.StartAsync(templatePath, httpPort, httpsPort, tempWebsitePath, removeSiteOnExit,
-                    customHostName, customHostNameHttpsPort);
+                iisExpress.StartAsync(templatePath, usedHttpPort, usedHttpsPort, tempWebsitePath, removeSiteOnExit,
+                    customHostName);
+
             return iisExpress;
         }
 
@@ -58,7 +60,7 @@ namespace Arbor.Ginkgo
 
             Path transformRootFile = Path.Combine(websitePath, "web.config");
 
-            Path transformationFile = Path.Combine(websitePath, string.Format("web.{0}.config", transformConfiguration));
+            Path transformationFile = Path.Combine(websitePath, $"web.{transformConfiguration}.config");
 
             if (File.Exists(transformRootFile.FullName) && File.Exists(transformationFile.FullName))
             {
@@ -179,7 +181,11 @@ namespace Arbor.Ginkgo
                 excluded.AddRange(exclusions);
             }
 
-            return TcpHelper.GetAvailablePort(range, excluded);
+            int availableHttpsPort = TcpHelper.GetAvailablePort(range, excluded);
+
+            Console.WriteLine($"Got dynamic https port {availableHttpsPort}");
+
+            return availableHttpsPort;
         }
     }
 }
