@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +22,7 @@ namespace Arbor.Ginkgo
         private Process _process;
         private int? _processId;
         private bool _removeSiteOnExit;
+        private Path _tempTemplateFilePath;
 
         public int? ProcessId
         {
@@ -59,7 +61,7 @@ namespace Arbor.Ginkgo
             _removeSiteOnExit = removeSiteOnExit;
             WebsitePath = websitePath;
 
-            Path tempFilePath = TempFilePathForAppHostConfig(httpPort);
+            _tempTemplateFilePath = TempFilePathForAppHostConfig(httpPort);
 
             Path iisExpressPath = DetermineIisExpressDir();
 
@@ -68,12 +70,12 @@ namespace Arbor.Ginkgo
                 configFile,
                 httpPort,
                 httpsPort,
-                tempFilePath,
+                _tempTemplateFilePath,
                 iisExpressPath,
                 customHostName);
 
             string arguments = string.Format(
-                CultureInfo.InvariantCulture, "/config:\"{0}\" /site:{1}", tempFilePath,
+                CultureInfo.InvariantCulture, "/config:\"{0}\" /site:{1}", _tempTemplateFilePath,
                 $"Arbor_Ginkgo_{httpPort}");
 
             var info = new ProcessStartInfo(iisExpressPath + @"\iisexpress.exe")
@@ -120,9 +122,14 @@ namespace Arbor.Ginkgo
         {
             string tempPath = System.IO.Path.GetTempPath();
 
-            Path tempFilePath = Path.Combine(tempPath, "Arbor.Ginkgo", "IntegrationTests", Guid.NewGuid().ToString(),
+            Path tempFilePath = Path.Combine(
+                tempPath, 
+                "Arbor.Ginkgo", 
+                "IntegrationTests", 
+                DateTime.UtcNow.Ticks.ToString(),
                 port.ToString(CultureInfo.InvariantCulture),
                 "applicationhost.config");
+
             return tempFilePath;
         }
 
@@ -137,20 +144,22 @@ namespace Arbor.Ginkgo
             var sb = new StringBuilder();
 
             sb.AppendLine("Using: ");
-            sb.AppendLine("HTTP port: " + httpPort.ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine($"HTTP port: {httpPort.ToString(CultureInfo.InvariantCulture)}");
+
             if (httpsPort >= 0)
             {
-                sb.AppendLine("HTTPS port: " + httpsPort.ToString(CultureInfo.InvariantCulture));
+                sb.AppendLine($"HTTPS port: {httpsPort.ToString(CultureInfo.InvariantCulture)}");
             }
-            sb.AppendLine("Temp file: " + tempFilePath);
-            sb.AppendLine("Temp path: " + tempPath);
-            sb.AppendLine("IIS Express path: " + iisExpressPath);
+
+            sb.AppendLine($"Temp file: {tempFilePath}");
+            sb.AppendLine($"Temp path: {tempPath}");
+            sb.AppendLine($"IIS Express path: {iisExpressPath}");
             bool hasCustomHostName = !string.IsNullOrWhiteSpace(customHostName) &&
                                      !customHostName.Equals("localhost", StringComparison.InvariantCultureIgnoreCase);
 
             if (hasCustomHostName)
             {
-                sb.AppendLine("Custom host name " + customHostName);
+                sb.AppendLine($"Custom host name {customHostName}");
             }
 
             Console.WriteLine(sb.ToString());
@@ -300,14 +309,16 @@ namespace Arbor.Ginkgo
                 {
                     try
                     {
-                        Process process = Process.GetProcessById(pid.Value);
-
-                        using (process)
+                        Process process = Process.GetProcesses().SingleOrDefault(p => p.Id == pid.Value);
+                        if (process != null)
                         {
-                            Console.WriteLine("Killing IIS Express");
-                            if (!process.HasExited)
+                            using (process)
                             {
-                                process.Kill();
+                                Console.WriteLine("Killing IIS Express");
+                                if (!process.HasExited)
+                                {
+                                    process.Kill();
+                                }
                             }
                         }
                     }
@@ -335,7 +346,12 @@ namespace Arbor.Ginkgo
                 }
                 catch (IOException ex)
                 {
-                    throw new IOException("Could not delete the website path '" + WebsitePath.FullName + "'", ex);
+                    throw new IOException($"Could not delete the website path \'{WebsitePath.FullName}\'", ex);
+                }
+
+                if (File.Exists(_tempTemplateFilePath.FullName))
+                {
+                    File.Delete(_tempTemplateFilePath.FullName);
                 }
             }
 

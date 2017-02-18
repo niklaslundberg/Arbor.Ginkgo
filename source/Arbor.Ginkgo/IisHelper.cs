@@ -15,6 +15,15 @@ namespace Arbor.Ginkgo
             Action<Path> onCopiedWebsite = null, int httpPort = -1, string transformConfiguration = null,
             string tempPath = null, bool removeSiteOnExit = true, int httpsPort = -1, string customHostName = "", bool httpsEnabled = false)
         {
+            if (websitePath == null)
+            {
+                throw new ArgumentNullException(nameof(websitePath));
+            }
+
+            if (templatePath == null)
+            {
+                throw new ArgumentNullException(nameof(templatePath));
+            }
 
             if (httpPort > 0 && httpsPort == httpPort)
             {
@@ -33,7 +42,11 @@ namespace Arbor.Ginkgo
 
             Path tempWebsitePath = tempPath != null
                 ? new Path(tempPath)
-                : Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", "TempWebsite", Guid.NewGuid().ToString(),
+                : Path.Combine(
+                    System.IO.Path.GetTempPath(), 
+                    "Arbor.Ginkgo", 
+                    "TempWebsite", 
+                    DateTime.UtcNow.Ticks.ToString(),
                     httpPort.ToString(CultureInfo.InvariantCulture));
 
             CopyWebsiteToTempPath(websitePath, tempWebsitePath);
@@ -44,8 +57,12 @@ namespace Arbor.Ginkgo
 
             onCopiedWebsite?.Invoke(tempWebsitePath);
 
-            await
-                iisExpress.StartAsync(templatePath, usedHttpPort, usedHttpsPort, tempWebsitePath, removeSiteOnExit,
+            await iisExpress.StartAsync(
+                    templatePath, 
+                    usedHttpPort, 
+                    usedHttpsPort, 
+                    tempWebsitePath, 
+                    removeSiteOnExit,
                     customHostName);
 
             return iisExpress;
@@ -99,6 +116,7 @@ namespace Arbor.Ginkgo
                 Console.WriteLine("Deleting temp directory {0}", tempDirectory.FullName);
                 tempDirectory.Delete(true);
             }
+
             tempDirectory.Refresh();
             Console.WriteLine("Creating temp directory {0}", tempDirectory.FullName);
             tempDirectory.Create();
