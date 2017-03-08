@@ -12,24 +12,41 @@ namespace Arbor.Ginkgo
     public static class IisHelper
     {
         public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
-            Action<Path> onCopiedWebsite = null, int tcpPort = -1, string transformConfiguration = null,
-            string tempPath = null, bool removeSiteOnExit = true, int sslTcpPort = -1, string customHostName = "", bool httpsEnabled = false, int customHostNameSslTcpPort = -1)
+            Action<Path> onCopiedWebsite = null, int httpPort = -1, string transformConfiguration = null,
+            string tempPath = null, bool removeSiteOnExit = true, int httpsPort = -1, string customHostName = "", bool httpsEnabled = false)
         {
-            int httpPort = tcpPort >= IPEndPoint.MinPort ? tcpPort : GetAvailableHttpPort();
-            int httpsPort = -1;
-            int customHostNameHttpsPort = -1;
+            if (websitePath == null)
+            {
+                throw new ArgumentNullException(nameof(websitePath));
+            }
+
+            if (templatePath == null)
+            {
+                throw new ArgumentNullException(nameof(templatePath));
+            }
+
+            if (httpPort > 0 && httpsPort == httpPort)
+            {
+                throw new ArgumentException($"HTTP port and https port cannot be the same, {httpPort}");
+            }
+
+            int usedHttpPort = httpPort >= IPEndPoint.MinPort ? httpPort : GetAvailableHttpPort();
+            int usedHttpsPort = -1;
 
             if (httpsEnabled)
             {
-                httpsPort = sslTcpPort >= IPEndPoint.MinPort ? sslTcpPort : GetAvailableHttpsPort(httpPort);
-                customHostNameHttpsPort = customHostNameSslTcpPort >= IPEndPoint.MinPort ? customHostNameSslTcpPort : GetAvailableHttpsPort(httpPort, httpsPort);
+                usedHttpsPort = httpsPort >= IPEndPoint.MinPort ? httpsPort : GetAvailableHttpsPort(usedHttpPort);
             }
 
             var iisExpress = new IisExpress();
 
             Path tempWebsitePath = tempPath != null
                 ? new Path(tempPath)
-                : Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", "TempWebsite", Guid.NewGuid().ToString(),
+                : Path.Combine(
+                    System.IO.Path.GetTempPath(), 
+                    "Arbor.Ginkgo", 
+                    "TempWebsite", 
+                    DateTime.UtcNow.Ticks.ToString(),
                     httpPort.ToString(CultureInfo.InvariantCulture));
 
             CopyWebsiteToTempPath(websitePath, tempWebsitePath);
@@ -38,14 +55,16 @@ namespace Arbor.Ginkgo
 
             TransformWebConfig(websitePath, transformConfiguration, tempWebsitePath);
 
-            if (onCopiedWebsite != null)
-            {
-                onCopiedWebsite(tempWebsitePath);
-            }
+            onCopiedWebsite?.Invoke(tempWebsitePath);
 
-            await
-                iisExpress.StartAsync(templatePath, httpPort, httpsPort, tempWebsitePath, removeSiteOnExit,
-                    customHostName, customHostNameHttpsPort);
+            await iisExpress.StartAsync(
+                    templatePath, 
+                    usedHttpPort, 
+                    usedHttpsPort, 
+                    tempWebsitePath, 
+                    removeSiteOnExit,
+                    customHostName);
+
             return iisExpress;
         }
 
@@ -58,7 +77,7 @@ namespace Arbor.Ginkgo
 
             Path transformRootFile = Path.Combine(websitePath, "web.config");
 
-            Path transformationFile = Path.Combine(websitePath, string.Format("web.{0}.config", transformConfiguration));
+            Path transformationFile = Path.Combine(websitePath, $"web.{transformConfiguration}.config");
 
             if (File.Exists(transformRootFile.FullName) && File.Exists(transformationFile.FullName))
             {
@@ -97,6 +116,7 @@ namespace Arbor.Ginkgo
                 Console.WriteLine("Deleting temp directory {0}", tempDirectory.FullName);
                 tempDirectory.Delete(true);
             }
+
             tempDirectory.Refresh();
             Console.WriteLine("Creating temp directory {0}", tempDirectory.FullName);
             tempDirectory.Create();
@@ -179,7 +199,11 @@ namespace Arbor.Ginkgo
                 excluded.AddRange(exclusions);
             }
 
-            return TcpHelper.GetAvailablePort(range, excluded);
+            int availableHttpsPort = TcpHelper.GetAvailablePort(range, excluded);
+
+            Console.WriteLine($"Got dynamic https port {availableHttpsPort}");
+
+            return availableHttpsPort;
         }
     }
 }

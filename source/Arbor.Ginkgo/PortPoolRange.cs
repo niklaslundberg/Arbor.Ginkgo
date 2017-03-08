@@ -14,44 +14,38 @@ namespace Arbor.Ginkgo
 			StartPort = port;
 			if (portCount < 0)
 			{
-				throw new ArgumentOutOfRangeException("portCount", "Port count must be a non-negative number");
+				throw new ArgumentOutOfRangeException(nameof(portCount), "Port count must be a non-negative number");
 			}
 
 			if (port < IPEndPoint.MinPort)
 			{
-				throw new ArgumentOutOfRangeException("port",
-				                                      string.Format("Port must be a number between {0} and {1}", IPEndPoint.MinPort,
-				                                                    IPEndPoint.MaxPort));
+				throw new ArgumentOutOfRangeException(nameof(port),
+				    $"Port must be a number between {IPEndPoint.MinPort} and {IPEndPoint.MaxPort}");
 			}
 			if (port > IPEndPoint.MaxPort)
 			{
-				throw new ArgumentOutOfRangeException("port",
-				                                      string.Format("Port must be a number between {0} and {1}", IPEndPoint.MinPort,
-				                                                    IPEndPoint.MaxPort));
+				throw new ArgumentOutOfRangeException(nameof(port),
+				    $"Port must be a number between {IPEndPoint.MinPort} and {IPEndPoint.MaxPort}");
 			}
 			if (port + portCount > IPEndPoint.MaxPort)
 			{
-				throw new ArgumentOutOfRangeException("portCount",
-				                                      string.Format("The last port number cannot be greater than {0}",
-				                                                    IPEndPoint.MaxPort));
+				throw new ArgumentOutOfRangeException(nameof(portCount),
+				    $"The last port number cannot be greater than {IPEndPoint.MaxPort}");
 			}
 		}
 
 		public int StartPort { get; private set; }
 
-		public int EndPort
-		{
-			get { return StartPort + _portCount; }
-		}
+		public int EndPort => StartPort + _portCount;
 
-		public string Format()
+	    public string Format()
 		{
 			if (_portCount == 1)
 			{
 				return StartPort.ToString(CultureInfo.InvariantCulture);
 			}
 
-			return string.Format("{0}-{1}", StartPort, EndPort);
+			return $"{StartPort}-{EndPort}";
 		}
 	}
 }
