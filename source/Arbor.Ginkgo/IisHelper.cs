@@ -1,19 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Alphaleonis.Win32.Filesystem;
 using Microsoft.Web.XmlTransform;
 
 namespace Arbor.Ginkgo
 {
     public static class IisHelper
     {
-        public static async Task<IisExpress> StartWebsiteAsync(Path websitePath, Path templatePath,
-            Action<Path> onCopiedWebsite = null, int httpPort = -1, string transformConfiguration = null,
-            string tempPath = null, bool removeSiteOnExit = true, int httpsPort = -1, string customHostName = "", bool httpsEnabled = false)
+        public static async Task<IisExpress> StartWebsiteAsync(
+            Path websitePath,
+            Path templatePath,
+            Action<Path> onCopiedWebsite = null,
+            int httpPort = -1,
+            string transformConfiguration = null,
+            string tempPath = null,
+            bool removeSiteOnExit = true,
+            int httpsPort = -1,
+            string customHostName = "",
+            bool httpsEnabled = false,
+            IEnumerable<KeyValuePair<string, string>> environmentVariables = null)
         {
             if (websitePath == null)
             {
@@ -43,9 +52,9 @@ namespace Arbor.Ginkgo
             Path tempWebsitePath = tempPath != null
                 ? new Path(tempPath)
                 : Path.Combine(
-                    System.IO.Path.GetTempPath(), 
-                    "Arbor.Ginkgo", 
-                    "TempWebsite", 
+                    System.IO.Path.GetTempPath(),
+                    "Arbor.Ginkgo",
+                    "TempWebsite",
                     DateTime.UtcNow.Ticks.ToString(),
                     httpPort.ToString(CultureInfo.InvariantCulture));
 
@@ -58,12 +67,13 @@ namespace Arbor.Ginkgo
             onCopiedWebsite?.Invoke(tempWebsitePath);
 
             await iisExpress.StartAsync(
-                    templatePath, 
-                    usedHttpPort, 
-                    usedHttpsPort, 
-                    tempWebsitePath, 
+                    templatePath,
+                    usedHttpPort,
+                    usedHttpsPort,
+                    tempWebsitePath,
                     removeSiteOnExit,
-                    customHostName);
+                    customHostName,
+                    environmentVariables);
 
             return iisExpress;
         }

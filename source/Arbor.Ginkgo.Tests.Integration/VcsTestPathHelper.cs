@@ -1,7 +1,7 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Reflection;
-using Alphaleonis.Win32.Filesystem;
 using Arbor.Aesculus.Core;
 
 namespace Arbor.Ginkgo.Tests.Integration
@@ -10,11 +10,9 @@ namespace Arbor.Ginkgo.Tests.Integration
     {
         public static string FindVcsRootPath()
         {
-            Assembly ncrunchAssembly = null;
             try
             {
-                ncrunchAssembly =
-                    AppDomain.CurrentDomain.Load("NCrunch.Framework");
+                Assembly ncrunchAssembly = AppDomain.CurrentDomain.Load("NCrunch.Framework");
 
                 Type ncrunchType =
                     ncrunchAssembly.GetTypes()

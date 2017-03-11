@@ -8,10 +8,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Directory = Alphaleonis.Win32.Filesystem.Directory;
-using DirectoryInfo = Alphaleonis.Win32.Filesystem.DirectoryInfo;
-using File = Alphaleonis.Win32.Filesystem.File;
-using FileInfo = Alphaleonis.Win32.Filesystem.FileInfo;
 
 namespace Arbor.Ginkgo
 {
@@ -51,7 +47,8 @@ namespace Arbor.Ginkgo
         }
 
         public async Task StartAsync(Path configFile, int httpPort, int httpsPort, Path websitePath,
-            bool removeSiteOnExit = false, string customHostName = "")
+            bool removeSiteOnExit = false, string customHostName = "",
+            IEnumerable<KeyValuePair<string, string>> environmentVariables = null)
         {
             if (httpPort == httpsPort)
             {
@@ -78,7 +75,7 @@ namespace Arbor.Ginkgo
                 CultureInfo.InvariantCulture, "/config:\"{0}\" /site:{1}", _tempTemplateFilePath,
                 $"Arbor_Ginkgo_{httpPort}");
 
-            var info = new ProcessStartInfo(iisExpressPath + @"\iisexpress.exe")
+            var startInfo = new ProcessStartInfo(iisExpressPath + @"\iisexpress.exe")
             {
                 WindowStyle = ProcessWindowStyle.Normal,
                 ErrorDialog = true,
@@ -88,7 +85,15 @@ namespace Arbor.Ginkgo
                 UseShellExecute = false,
             };
 
-            var startThread = new Thread(async () => await StartIisExpressAsync(info))
+            if (environmentVariables != null)
+            {
+                foreach (KeyValuePair<string, string> environmentVariable in environmentVariables)
+                {
+                    startInfo.EnvironmentVariables.Add(environmentVariable.Key, environmentVariable.Value);
+                }
+            }
+
+            var startThread = new Thread(async () => await StartIisExpressAsync(startInfo))
             {
                 IsBackground = true
             };
@@ -123,9 +128,9 @@ namespace Arbor.Ginkgo
             string tempPath = System.IO.Path.GetTempPath();
 
             Path tempFilePath = Path.Combine(
-                tempPath, 
-                "Arbor.Ginkgo", 
-                "IntegrationTests", 
+                tempPath,
+                "Arbor.Ginkgo",
+                "IntegrationTests",
                 DateTime.UtcNow.Ticks.ToString(),
                 port.ToString(CultureInfo.InvariantCulture),
                 "applicationhost.config");
@@ -267,7 +272,7 @@ namespace Arbor.Ginkgo
             {
                 return;
             }
-            var waitCounter = 1;
+            int waitCounter = 1;
 
             while (!_processId.HasValue)
             {
