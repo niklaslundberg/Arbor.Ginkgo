@@ -13,7 +13,7 @@ namespace Arbor.Ginkgo
 		{
 			if (string.IsNullOrWhiteSpace(fullName))
 			{
-				throw new ArgumentNullException("fullName");
+				throw new ArgumentNullException(nameof(fullName));
 			}
 
 			var normalizedPath = fullName.NormalizePath();
@@ -69,12 +69,12 @@ namespace Arbor.Ginkgo
 		{
 			if (path1 == null)
 			{
-				throw new ArgumentNullException("path1");
+				throw new ArgumentNullException(nameof(path1));
 			}
 
 			if (string.IsNullOrWhiteSpace(path2))
 			{
-				throw new ArgumentNullException("path2");
+				throw new ArgumentNullException(nameof(path2));
 			}
 
 			var combined = System.IO.Path.Combine(path1.FullName, path2);
@@ -98,7 +98,7 @@ namespace Arbor.Ginkgo
 		{
 			if (path1 == null)
 			{
-				throw new ArgumentNullException("path1");
+				throw new ArgumentNullException(nameof(path1));
 			}
 
 			var pathList = new List<string>(paths);
