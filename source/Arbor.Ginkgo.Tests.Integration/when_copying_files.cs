@@ -22,9 +22,11 @@ namespace Arbor.Ginkgo.Tests.Integration
                 {
                 }
 
-                if (Directory.Exists(tempPath.FullName))
-                {
-                    Directory.Delete(tempPath.FullName, recursive: true);
+                if (tempPath != null) {
+                    if (Directory.Exists(tempPath.FullName))
+                    {
+                        Directory.Delete(tempPath.FullName, recursive: true);
+                    }
                 }
             };
 
