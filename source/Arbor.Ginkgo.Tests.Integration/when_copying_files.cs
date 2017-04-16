@@ -42,7 +42,7 @@ namespace Arbor.Ginkgo.Tests.Integration
             };
 
         Because of =
-            () => { iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName).Result; };
+            () => { iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName, ignoreSiteRemovalErrors: true).Result; };
 
         It should_not_contain_a_banned_directory =
             () =>

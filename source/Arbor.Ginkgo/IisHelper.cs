@@ -22,7 +22,8 @@ namespace Arbor.Ginkgo
             int httpsPort = -1,
             string customHostName = "",
             bool httpsEnabled = false,
-            IEnumerable<KeyValuePair<string, string>> environmentVariables = null)
+            IEnumerable<KeyValuePair<string, string>> environmentVariables = null,
+            bool ignoreSiteRemovalErrors = false)
         {
             if (websitePath == null)
             {
@@ -73,7 +74,8 @@ namespace Arbor.Ginkgo
                     tempWebsitePath,
                     removeSiteOnExit,
                     customHostName,
-                    environmentVariables);
+                    environmentVariables,
+                    ignoreSiteRemovalErrors);
 
             return iisExpress;
         }

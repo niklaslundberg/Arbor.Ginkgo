@@ -4,8 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Net.Sockets;
-using Arbor.Aesculus.Core;
 using Machine.Specifications;
 
 namespace Arbor.Ginkgo.Tests.Integration
@@ -25,9 +23,16 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             if (tempPath != null)
             {
-                if (Directory.Exists(tempPath.FullName))
+                try
                 {
-                    Directory.Delete(tempPath.FullName, recursive: true);
+                    if (Directory.Exists(tempPath.FullName))
+                    {
+                        Directory.Delete(tempPath.FullName, recursive: true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
                 }
             }
         };
@@ -48,7 +53,17 @@ namespace Arbor.Ginkgo.Tests.Integration
             {
                 customHostName = "iisexpresstest.local";
                 Dictionary<string, string> environmentVariables = new Dictionary<string, string> {{"TEST", "ABC"}};
-                iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName, customHostName: customHostName, onCopiedWebsite: OnCopiedWebsite, httpsPort: 44435, httpPort: 55557, httpsEnabled: true, environmentVariables: environmentVariables).Result;
+                iis = IisHelper.StartWebsiteAsync(
+                    websitePath,
+                    templatePath,
+                    tempPath: tempPath.FullName,
+                    customHostName: customHostName,
+                    onCopiedWebsite: OnCopiedWebsite,
+                    httpsPort: 44435,
+                    httpPort: 55557,
+                    httpsEnabled: true,
+                    environmentVariables: environmentVariables,
+                    ignoreSiteRemovalErrors: true).Result;
             };
 
         static void OnCopiedWebsite(Path path)

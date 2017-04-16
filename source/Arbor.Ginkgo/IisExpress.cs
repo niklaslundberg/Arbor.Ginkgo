@@ -18,6 +18,7 @@ namespace Arbor.Ginkgo
         private Process _process;
         private int? _processId;
         private bool _removeSiteOnExit;
+        private bool _ignoreSiteRemovalErrors;
         private Path _tempTemplateFilePath;
 
         public int? ProcessId
@@ -46,9 +47,15 @@ namespace Arbor.Ginkgo
             GC.SuppressFinalize(this);
         }
 
-        public async Task StartAsync(Path configFile, int httpPort, int httpsPort, Path websitePath,
-            bool removeSiteOnExit = false, string customHostName = "",
-            IEnumerable<KeyValuePair<string, string>> environmentVariables = null)
+        public async Task StartAsync(
+            Path configFile,
+            int httpPort,
+            int httpsPort,
+            Path websitePath,
+            bool removeSiteOnExit = false,
+            string customHostName = "",
+            IEnumerable<KeyValuePair<string, string>> environmentVariables = null,
+            bool ignoreSiteRemovalErrors = false)
         {
             if (httpPort == httpsPort)
             {
@@ -56,6 +63,7 @@ namespace Arbor.Ginkgo
             }
 
             _removeSiteOnExit = removeSiteOnExit;
+            _ignoreSiteRemovalErrors = ignoreSiteRemovalErrors;
             WebsitePath = websitePath;
 
             _tempTemplateFilePath = TempFilePathForAppHostConfig(httpPort);
@@ -92,6 +100,7 @@ namespace Arbor.Ginkgo
                     startInfo.EnvironmentVariables.Add(environmentVariable.Key, environmentVariable.Value);
                 }
             }
+
 
             var startThread = new Thread(async () => await StartIisExpressAsync(startInfo))
             {
@@ -353,7 +362,10 @@ namespace Arbor.Ginkgo
                 }
                 catch (IOException ex)
                 {
-                    throw new IOException($"Could not delete the website path \'{WebsitePath.FullName}\'", ex);
+                    if (!_ignoreSiteRemovalErrors)
+                    {
+                        throw new IOException($"Could not delete the website path \'{WebsitePath.FullName}\'", ex);
+                    }
                 }
 
                 if (File.Exists(_tempTemplateFilePath.FullName))
@@ -384,6 +396,7 @@ namespace Arbor.Ginkgo
             {
                 Console.WriteLine("Starting IIS Express");
                 _process = Process.Start(info);
+
 
                 if (_process != null)
                 {
