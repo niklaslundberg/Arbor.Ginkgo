@@ -101,6 +101,7 @@ namespace Arbor.Ginkgo
                 }
             }
 
+            startInfo.WorkingDirectory = websitePath.FullName;
 
             var startThread = new Thread(async () => await StartIisExpressAsync(startInfo))
             {
