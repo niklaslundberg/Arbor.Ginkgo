@@ -80,7 +80,7 @@ namespace Arbor.Ginkgo
                 WindowStyle = ProcessWindowStyle.Normal,
                 ErrorDialog = true,
                 LoadUserProfile = true,
-                CreateNoWindow = false,
+                CreateNoWindow = true,
                 Arguments = arguments,
                 UseShellExecute = false,
             };
@@ -234,7 +234,8 @@ namespace Arbor.Ginkgo
                         Arguments = command,
                         RedirectStandardOutput = true,
                         UseShellExecute = false,
-                        RedirectStandardError = true
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
                     }
                 };
 
@@ -272,6 +273,7 @@ namespace Arbor.Ginkgo
             {
                 return;
             }
+
             int waitCounter = 1;
 
             while (!_processId.HasValue)
