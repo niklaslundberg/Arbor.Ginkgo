@@ -1,10 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Net.Sockets;
-using Arbor.Aesculus.Core;
 using Machine.Specifications;
 
 namespace Arbor.Ginkgo.Tests.Integration
@@ -22,9 +21,19 @@ namespace Arbor.Ginkgo.Tests.Integration
             {
             }
 
-            if (Directory.Exists(tempPath.FullName))
+            if (tempPath != null)
             {
-                Directory.Delete(tempPath.FullName, recursive: true);
+                try
+                {
+                    if (Directory.Exists(tempPath.FullName))
+                    {
+                        Directory.Delete(tempPath.FullName, recursive: true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
             }
         };
 
@@ -40,11 +49,21 @@ namespace Arbor.Ginkgo.Tests.Integration
             tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", Guid.NewGuid().ToString());
         };
 
-        Because of =
-            () =>
+        Because of = () =>
             {
                 customHostName = "iisexpresstest.local";
-                iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName, customHostName: customHostName, onCopiedWebsite: OnCopiedWebsite, httpsPort: 44355, httpPort:55557, httpsEnabled:true).Result;
+                Dictionary<string, string> environmentVariables = new Dictionary<string, string> {{"TEST", "ABC"}};
+                iis = IisHelper.StartWebsiteAsync(
+                    websitePath,
+                    templatePath,
+                    tempPath: tempPath.FullName,
+                    customHostName: customHostName,
+                    onCopiedWebsite: OnCopiedWebsite,
+                    httpsPort: 44435,
+                    httpPort: 55557,
+                    httpsEnabled: true,
+                    environmentVariables: environmentVariables,
+                    ignoreSiteRemovalErrors: true).Result;
             };
 
         static void OnCopiedWebsite(Path path)
@@ -96,7 +115,10 @@ namespace Arbor.Ginkgo.Tests.Integration
 
                 var response = client.GetAsync(requestUri).Result;
 
-                response.StatusCode.ShouldEqual(HttpStatusCode.OK);
+                Console.WriteLine(response);
+                Console.WriteLine(response?.Content.ReadAsStringAsync().Result);
+
+                response?.StatusCode.ShouldEqual(HttpStatusCode.OK);
             }
         };
 

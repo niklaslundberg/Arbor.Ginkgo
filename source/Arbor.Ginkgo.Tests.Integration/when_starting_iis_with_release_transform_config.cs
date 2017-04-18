@@ -31,7 +31,7 @@ namespace Arbor.Ginkgo.Tests.Integration
             Path templatePath = Path.Combine(sourceRoot, "source", "applicationHost.config");
 
             Task<IisExpress> startWebsite = IisHelper.StartWebsiteAsync(websitePath, templatePath,
-                path => Console.WriteLine("Using website folder " + path), transformConfiguration: "release", httpPort: httpPort);
+                path => Console.WriteLine("Using website folder " + path), transformConfiguration: "release", httpPort: httpPort, ignoreSiteRemovalErrors: true);
 
             iis = startWebsite.Result;
         };
@@ -40,7 +40,7 @@ namespace Arbor.Ginkgo.Tests.Integration
         {
             using (var httpClient = new HttpClient())
             {
-                result = httpClient.GetAsync(string.Format("http://localhost:{0}/api/test", iis.Port)).Result;
+                result = httpClient.GetAsync($"http://localhost:{iis.Port}/api/test").Result;
             }
 
             Console.WriteLine(result.StatusCode + " " + result.Content.ReadAsStringAsync().Result);

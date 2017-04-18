@@ -1,4 +1,7 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
+using System.IO;
+using System.Linq;
 using System.Web.Http;
 
 namespace Arbor.Ginkgo.Tests.Integration.WebApp.Controllers
@@ -7,7 +10,14 @@ namespace Arbor.Ginkgo.Tests.Integration.WebApp.Controllers
     {
         public object Get()
         {
-            return new {Configuration = ConfigurationManager.AppSettings["Configuration"]};
+            var data = new
+            {
+                Configuration = ConfigurationManager.AppSettings["Configuration"],
+                EnvironmentVariables = Environment.GetEnvironmentVariables().ToStringArray().OrderBy(pair => pair.Key).ToArray(),
+                CurrentDirectory = Directory.GetCurrentDirectory()
+            };
+
+            return data;
         }
     }
 }
