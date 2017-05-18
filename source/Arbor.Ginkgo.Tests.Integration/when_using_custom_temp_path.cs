@@ -22,10 +22,7 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             if (tempPath != null)
             {
-                if (Directory.Exists(tempPath.FullName))
-                {
-                    Directory.Delete(tempPath.FullName, recursive: true);
-                }
+                new DirectoryInfo(tempPath.FullName).DeleteRecursive();
             }
         };
 
@@ -41,7 +38,7 @@ namespace Arbor.Ginkgo.Tests.Integration
         };
 
         Because of =
-            () => { iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName, ignoreSiteRemovalErrors: true).Result; };
+            () => { iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName, ignoreSiteRemovalErrors: true, removeSiteOnExit: true).Result; };
 
         It should_have_created_the_temp_path = () => Directory.Exists(iis.WebsitePath.FullName);
     }

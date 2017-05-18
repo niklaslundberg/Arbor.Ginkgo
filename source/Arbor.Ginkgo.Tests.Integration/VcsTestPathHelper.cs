@@ -34,9 +34,10 @@ namespace Arbor.Ginkgo.Tests.Integration
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
             }
+
             return VcsPathHelper.FindVcsRootPath();
         }
     }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -16,6 +17,11 @@ namespace Arbor.Ginkgo.Tests.Integration
         {
             using (iis)
             {
+            }
+
+            if (iis.WebsitePath != null)
+            {
+                new DirectoryInfo(iis.WebsitePath.FullName).DeleteRecursive();
             }
         };
 

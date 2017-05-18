@@ -25,10 +25,7 @@ namespace Arbor.Ginkgo.Tests.Integration
             {
                 try
                 {
-                    if (Directory.Exists(tempPath.FullName))
-                    {
-                        Directory.Delete(tempPath.FullName, recursive: true);
-                    }
+                    new DirectoryInfo(tempPath.FullName).DeleteRecursive();
                 }
                 catch (Exception ex)
                 {

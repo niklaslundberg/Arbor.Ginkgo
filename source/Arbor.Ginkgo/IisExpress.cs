@@ -297,6 +297,11 @@ namespace Arbor.Ginkgo
 
             if (disposing)
             {
+                if (WebsitePath.Exists)
+                {
+                    ProcessExtensions.KillAllProcessRunningFromPath(WebsitePath.FullName);
+                }
+
                 int? pid;
 
                 if (_process != null)
