@@ -277,6 +277,20 @@ namespace Arbor.Ginkgo
             }
         }
 
+        public bool RemoveSiteOnExit
+        {
+            get => _removeSiteOnExit;
+            set
+            {
+                if (_isDisposed)
+                {
+                    throw new ObjectDisposedException(ToString());
+                }
+
+                _removeSiteOnExit = value;
+            }
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (_isDisposed)
@@ -432,6 +446,11 @@ namespace Arbor.Ginkgo
             }
 
             return Task.FromResult(0);
+        }
+
+        public override string ToString()
+        {
+            return $"{nameof(Port)}: {Port}, {nameof(HttpsPort)}: {HttpsPort}, {nameof(WebsitePath)}: {WebsitePath}";
         }
     }
 }
