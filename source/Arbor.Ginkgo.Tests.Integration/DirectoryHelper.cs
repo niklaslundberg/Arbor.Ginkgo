@@ -18,10 +18,17 @@ namespace Arbor.Ginkgo.Tests.Integration
             {
                 return;
             }
-
-            foreach (DirectoryInfo directory in directoryInfo.GetDirectories())
+            try
             {
-                DeleteRecursive(directory);
+
+                foreach (DirectoryInfo directory in directoryInfo.GetDirectories())
+                {
+                    DeleteRecursive(directory);
+                }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine($"Could not delete files in directory '{directoryInfo.FullName}', {ex}");
             }
 
             foreach (FileInfo fileInfo in directoryInfo.GetFiles())
