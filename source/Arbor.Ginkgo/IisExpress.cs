@@ -13,13 +13,19 @@ namespace Arbor.Ginkgo
 {
     public class IisExpress : IDisposable
     {
+        private bool _ignoreSiteRemovalErrors;
         private bool _isDisposed;
 
         private Process _process;
         private int? _processId;
         private bool _removeSiteOnExit;
-        private bool _ignoreSiteRemovalErrors;
         private Path _tempTemplateFilePath;
+        private Action<string> _logger;
+
+        public IisExpress(Action<string> logger = null)
+        {
+            _logger = logger;
+        }
 
         public int? ProcessId
         {
@@ -37,9 +43,24 @@ namespace Arbor.Ginkgo
         }
 
         public int Port { get; private set; }
+
         public int HttpsPort { get; private set; }
 
         public Path WebsitePath { get; private set; }
+
+        public bool RemoveSiteOnExit
+        {
+            get => _removeSiteOnExit;
+            set
+            {
+                if (_isDisposed)
+                {
+                    throw new ObjectDisposedException(ToString());
+                }
+
+                _removeSiteOnExit = value;
+            }
+        }
 
         public void Dispose()
         {
@@ -47,12 +68,17 @@ namespace Arbor.Ginkgo
             GC.SuppressFinalize(this);
         }
 
+        public override string ToString()
+        {
+            return $"{nameof(Port)}: {Port}, {nameof(HttpsPort)}: {HttpsPort}, {nameof(WebsitePath)}: {WebsitePath}";
+        }
+
         public async Task StartAsync(
             Path configFile,
             int httpPort,
             int httpsPort,
             Path websitePath,
-            bool removeSiteOnExit = false,
+            bool removeSiteOnExit = true,
             string customHostName = "",
             IEnumerable<KeyValuePair<string, string>> environmentVariables = null,
             bool ignoreSiteRemovalErrors = false)
@@ -80,7 +106,9 @@ namespace Arbor.Ginkgo
                 customHostName);
 
             string arguments = string.Format(
-                CultureInfo.InvariantCulture, "/config:\"{0}\" /site:{1}", _tempTemplateFilePath,
+                CultureInfo.InvariantCulture,
+                "/config:\"{0}\" /site:{1}",
+                _tempTemplateFilePath,
                 $"Arbor_Ginkgo_{httpPort}");
 
             var startInfo = new ProcessStartInfo(iisExpressPath + @"\iisexpress.exe")
@@ -90,7 +118,7 @@ namespace Arbor.Ginkgo
                 LoadUserProfile = true,
                 CreateNoWindow = true,
                 Arguments = arguments,
-                UseShellExecute = false,
+                UseShellExecute = false
             };
 
             if (environmentVariables != null)
@@ -111,8 +139,153 @@ namespace Arbor.Ginkgo
             startThread.Start();
         }
 
-        private Task CreateTempAppHostConfigAsync(Path websitePath, Path templateConfigFilePath, int httpPort,
-            int httpsPort, Path tempFilePath, Path iisExpressPath, string customHostName = "")
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            int waitCounter = 1;
+
+            while (!_processId.HasValue)
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(50));
+                _logger?.Invoke(string.Format("Waiting {0} milliseconds", 50 * waitCounter));
+                waitCounter++;
+            }
+
+            _logger?.Invoke("Disposing IIS Express process");
+
+            if (disposing)
+            {
+                if (WebsitePath.Exists)
+                {
+                    ProcessExtensions.KillAllProcessRunningFromPath(WebsitePath.FullName, _logger);
+                }
+
+                int? pid;
+
+                if (_process != null)
+                {
+                    pid = _process.Id;
+                    _logger?.Invoke("Closed IIS Express");
+                    if (!_process.HasExited)
+                    {
+                        _process.Kill();
+                    }
+
+                    using (_process)
+
+                    {
+                        _logger?.Invoke("Disposed IIS Express");
+                    }
+                }
+                else
+                {
+                    pid = _processId;
+                    _logger?.Invoke("Process is null");
+                }
+
+                if (pid != null)
+                {
+                    try
+                    {
+                        Process process = Process.GetProcesses().SingleOrDefault(p => p.Id == pid.Value);
+                        if (process != null)
+                        {
+                            using (process)
+                            {
+                                _logger?.Invoke("Killing IIS Express");
+                                if (!process.HasExited)
+                                {
+                                    process.Kill();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine("Could not kill process with id {0}, {1}", pid, ex);
+                    }
+                }
+                else
+                {
+                    _logger?.Invoke("Could not find any process id to kill");
+                }
+            }
+
+            if (_removeSiteOnExit)
+            {
+                try
+                {
+                    if (WebsitePath.Exists)
+                    {
+                        var directoryInfo = new DirectoryInfo(WebsitePath.FullName);
+
+                        directoryInfo.Delete(true);
+                    }
+                }
+                catch (IOException ex)
+                {
+                    if (!_ignoreSiteRemovalErrors)
+                    {
+                        throw new IOException($"Could not delete the website path \'{WebsitePath.FullName}\'", ex);
+                    }
+                }
+            }
+
+            if (File.Exists(_tempTemplateFilePath.FullName))
+            {
+                File.Delete(_tempTemplateFilePath.FullName);
+            }
+
+            DirectoryInfo templateDirectory = new FileInfo(_tempTemplateFilePath.FullName).Directory;
+
+            if (templateDirectory != null && templateDirectory.Exists)
+            {
+                templateDirectory.Delete(recursive: true);
+            }
+
+            _process = null;
+            _processId = null;
+            _isDisposed = true;
+        }
+
+        private static Path TempFilePathForAppHostConfig(int port)
+        {
+            string tempPath = System.IO.Path.GetTempPath();
+
+            Path tempFilePath = Path.Combine(
+                tempPath,
+                $"Arbor.Ginkgo_{DateTime.UtcNow.Ticks}_{port.ToString(CultureInfo.InvariantCulture)}",
+                "applicationhost.config");
+
+            return tempFilePath;
+        }
+
+        private static Path GetAppCmdPath(Path iisExpressPath)
+        {
+            return Path.Combine(iisExpressPath, "appcmd.exe");
+        }
+
+        private static Path DetermineIisExpressDir()
+        {
+            const Environment.SpecialFolder programFiles = Environment.SpecialFolder.ProgramFilesX86;
+
+            Path iisExpressPath = Path.Combine(Environment.GetFolderPath(programFiles), @"IIS Express");
+
+            return iisExpressPath;
+        }
+
+        private Task CreateTempAppHostConfigAsync(
+            Path websitePath,
+            Path templateConfigFilePath,
+            int httpPort,
+            int httpsPort,
+            Path tempFilePath,
+            Path iisExpressPath,
+            string customHostName = "")
         {
             var fileInfo = new FileInfo(tempFilePath.FullName);
 
@@ -133,28 +306,14 @@ namespace Arbor.Ginkgo
             return Task.FromResult(0);
         }
 
-        private static Path TempFilePathForAppHostConfig(int port)
-        {
-            string tempPath = System.IO.Path.GetTempPath();
-
-            Path tempFilePath = Path.Combine(
-                tempPath,
-                "Arbor.Ginkgo",
-                "IntegrationTests",
-                DateTime.UtcNow.Ticks.ToString(),
-                port.ToString(CultureInfo.InvariantCulture),
-                "applicationhost.config");
-
-            return tempFilePath;
-        }
-
-        private static Path GetAppCmdPath(Path iisExpressPath)
-        {
-            return Path.Combine(iisExpressPath, "appcmd.exe");
-        }
-
-        private void AddSiteToTempApphostConfig(int httpPort, int httpsPort, Path tempFilePath, Path tempPath,
-            Path iisExpressPath, string customHostName = "")
+        private void AddSiteToTempApphostConfig(
+            int httpPort,
+            int httpsPort,
+            Path tempFilePath,
+            Path tempPath,
+            Path iisExpressPath,
+            string customHostName = "",
+            Action<string> logger = null)
         {
             var sb = new StringBuilder();
 
@@ -177,15 +336,16 @@ namespace Arbor.Ginkgo
                 sb.AppendLine($"Custom host name {customHostName}");
             }
 
-            Console.WriteLine(sb.ToString());
+            logger?.Invoke(sb.ToString());
 
             const string name = "Arbor_Ginkgo";
 
             Port = httpPort;
             HttpsPort = httpsPort;
 
-            Console.WriteLine("Setting up new IIS Express instance on port {0} with configuration file '{1}", Port,
-                tempFilePath);
+            logger?.Invoke(string.Format("Setting up new IIS Express instance on port {0} with configuration file '{1}",
+                Port,
+                tempFilePath));
 
             var commands = new List<string>();
 
@@ -214,7 +374,6 @@ namespace Arbor.Ginkgo
                     $@"set config -section:system.applicationHost/sites /+""[name='{siteName}',id='{siteId}'].bindings.[protocol='http',bindingInformation='*:{httpPort
                         .ToString(CultureInfo.InvariantCulture)}:localhost']"" /commit:apphost /AppHostConfig:""{tempFilePath}""");
 
-
                 if (httpsPort >= 0)
                 {
                     commands.Add(
@@ -234,8 +393,7 @@ namespace Arbor.Ginkgo
             {
                 string processInfo = $"'{exePath}' {command}";
 
-                Console.WriteLine("Executing {0}{1}", Environment.NewLine, processInfo);
-                Console.WriteLine();
+                logger?.Invoke(string.Format("Executing {0}{1}", Environment.NewLine, processInfo));
 
                 var process = new Process
                 {
@@ -253,7 +411,7 @@ namespace Arbor.Ginkgo
                 {
                     if (args.Data != null)
                     {
-                        Console.WriteLine(args.Data);
+                        logger?.Invoke(args.Data);
                     }
                 };
                 process.ErrorDataReceived += (sender, args) =>
@@ -272,156 +430,27 @@ namespace Arbor.Ginkgo
                 if (process.ExitCode != 0)
                 {
                     throw new InvalidOperationException(string.Format("The process {1}{0}{1} exited with code {2}",
-                        processInfo, Environment.NewLine, process.ExitCode));
+                        processInfo,
+                        Environment.NewLine,
+                        process.ExitCode));
                 }
             }
         }
 
-        public bool RemoveSiteOnExit
-        {
-            get => _removeSiteOnExit;
-            set
-            {
-                if (_isDisposed)
-                {
-                    throw new ObjectDisposedException(ToString());
-                }
-
-                _removeSiteOnExit = value;
-            }
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_isDisposed)
-            {
-                return;
-            }
-
-            int waitCounter = 1;
-
-            while (!_processId.HasValue)
-            {
-                Thread.Sleep(TimeSpan.FromMilliseconds(50));
-                Console.WriteLine("Waiting {0} milliseconds", 50 * waitCounter);
-                waitCounter++;
-            }
-
-            Console.WriteLine("Disposing IIS Express process");
-
-            if (disposing)
-            {
-                if (WebsitePath.Exists)
-                {
-                    ProcessExtensions.KillAllProcessRunningFromPath(WebsitePath.FullName);
-                }
-
-                int? pid;
-
-                if (_process != null)
-                {
-                    pid = _process.Id;
-                    Console.WriteLine("Closed IIS Express");
-                    if (!_process.HasExited)
-                    {
-                        _process.Kill();
-                    }
-
-                    using (_process)
-
-                    {
-                        Console.WriteLine("Disposed IIS Express");
-                    }
-                    {
-                    }
-                }
-                else
-                {
-                    pid = _processId;
-                    Console.WriteLine("Process is null");
-                }
-
-                if (pid != null)
-                {
-                    try
-                    {
-                        Process process = Process.GetProcesses().SingleOrDefault(p => p.Id == pid.Value);
-                        if (process != null)
-                        {
-                            using (process)
-                            {
-                                Console.WriteLine("Killing IIS Express");
-                                if (!process.HasExited)
-                                {
-                                    process.Kill();
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.Error.WriteLine("Could not kill process with id {0}, {1}", pid, ex);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Could not find any process id to kill");
-                }
-            }
-
-            if (_removeSiteOnExit)
-            {
-                try
-                {
-                    if (WebsitePath.Exists)
-                    {
-                        var directoryInfo = new DirectoryInfo(WebsitePath.FullName);
-
-                        directoryInfo.Delete(true);
-                    }
-                }
-                catch (IOException ex)
-                {
-                    if (!_ignoreSiteRemovalErrors)
-                    {
-                        throw new IOException($"Could not delete the website path \'{WebsitePath.FullName}\'", ex);
-                    }
-                }
-
-                if (File.Exists(_tempTemplateFilePath.FullName))
-                {
-                    File.Delete(_tempTemplateFilePath.FullName);
-                }
-            }
-
-            _process = null;
-            _processId = null;
-            _isDisposed = true;
-        }
-
-        private static Path DetermineIisExpressDir()
-        {
-            const Environment.SpecialFolder programFiles = Environment.SpecialFolder.ProgramFilesX86;
-
-            Path iisExpressPath = Path.Combine(Environment.GetFolderPath(programFiles), @"IIS Express");
-
-            return iisExpressPath;
-        }
-
-        [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes",
+        [SuppressMessage("Microsoft.Design",
+            "CA1031:DoNotCatchGeneralExceptionTypes",
             Justification = "Required here to ensure that the instance is disposed.")]
         private Task StartIisExpressAsync(ProcessStartInfo info)
         {
             try
             {
-                Console.WriteLine("Starting IIS Express");
+                _logger?.Invoke("Starting IIS Express");
                 _process = Process.Start(info);
-
 
                 if (_process != null)
                 {
                     _processId = _process.Id;
-                    Console.WriteLine("Running IIS Express with id {0}, waiting for exit", _processId);
+                    _logger?.Invoke(string.Format("Running IIS Express with id {0}, waiting for exit", _processId));
 
                     if (!_process.HasExited)
                     {
@@ -430,27 +459,21 @@ namespace Arbor.Ginkgo
                 }
                 else
                 {
-                    Console.WriteLine("Could not get any process reference");
+                    _logger?.Invoke("Could not get any process reference");
                 }
             }
             catch (ThreadAbortException)
             {
-                Console.WriteLine("The IIS Express thread was aborted");
+                _logger?.Invoke("The IIS Express thread was aborted");
                 Dispose();
             }
             catch (Exception exception)
             {
-                Console.WriteLine("Exception when running IIS Express");
-                Console.WriteLine(exception);
+                _logger?.Invoke($"Exception when running IIS Express {exception}");
                 Dispose();
             }
 
             return Task.FromResult(0);
-        }
-
-        public override string ToString()
-        {
-            return $"{nameof(Port)}: {Port}, {nameof(HttpsPort)}: {HttpsPort}, {nameof(WebsitePath)}: {WebsitePath}";
         }
     }
 }

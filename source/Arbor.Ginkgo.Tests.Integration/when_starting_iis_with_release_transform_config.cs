@@ -1,33 +1,39 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
-using Arbor.Aesculus.Core;
 using Machine.Specifications;
+using Newtonsoft.Json;
 
 namespace Arbor.Ginkgo.Tests.Integration
 {
     public class when_starting_iis_with_release_transform_config
     {
-        static IisExpress iis;
-        static HttpResponseMessage result;
+        private static IisExpress iis;
+        private static HttpResponseMessage result;
 
-        Cleanup after = () =>
+        private static int httpPort;
+
+        private Cleanup after = () =>
         {
             using (iis)
             {
             }
 
-            if (iis.WebsitePath != null)
+            if (_tempPath != null)
             {
-                new DirectoryInfo(iis.WebsitePath.FullName).DeleteRecursive();
+                Thread.Sleep(TimeSpan.FromMilliseconds(200));
+                new DirectoryInfo(_tempPath.FullName).DeleteRecursive();
             }
         };
 
-        Establish context = () =>
+        private Establish context = () =>
         {
             httpPort = 55443;
+
             ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
 
             string sourceRoot = VcsTestPathHelper.FindVcsRootPath();
@@ -36,23 +42,43 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             Path templatePath = Path.Combine(sourceRoot, "source", "applicationHost.config");
 
-            Task<IisExpress> startWebsite = IisHelper.StartWebsiteAsync(websitePath, templatePath,
-                path => Console.WriteLine("Using website folder " + path), transformConfiguration: "release", httpPort: httpPort, ignoreSiteRemovalErrors: true);
+            _tempPath = Path.Combine(System.IO.Path.GetTempPath(), $"Arbor.Ginkgo_{Guid.NewGuid()}");
+
+            Task<IisExpress> startWebsite = IisHelper.StartWebsiteAsync(websitePath,
+                templatePath,
+                path => Console.WriteLine($"Using website folder {path}"),
+                transformConfiguration: "release",
+                httpPort: httpPort,
+                ignoreSiteRemovalErrors: true,
+                    logger: Console.WriteLine,
+                tempPath: _tempPath.FullName);
 
             iis = startWebsite.Result;
         };
 
-        Because of = () =>
+        private Because of = () =>
         {
             using (var httpClient = new HttpClient())
             {
                 result = httpClient.GetAsync($"http://localhost:{iis.Port}/api/test").Result;
             }
 
-            Console.WriteLine(result.StatusCode + " " + result.Content.ReadAsStringAsync().Result);
+            string body = result.Content.ReadAsStringAsync().Result;
+
+            var deserializeAnonymousType = JsonConvert.DeserializeAnonymousType(body,
+                new
+                {
+                    Configuration = "",
+                    EnvironmentVariables = new KeyValuePair<string, string>[] { },
+                    CurrentDirectory = string.Empty
+                });
+
+            deserializeAnonymousType.Configuration.ShouldEqual("Release");
+
+            Console.WriteLine(result.StatusCode + " " + body);
         };
 
-        It should_return_success_status_code = () => result.IsSuccessStatusCode.ShouldBeTrue();
-        static int httpPort;
+        private It should_return_success_status_code = () => result.IsSuccessStatusCode.ShouldBeTrue();
+        private static Path _tempPath;
     }
 }

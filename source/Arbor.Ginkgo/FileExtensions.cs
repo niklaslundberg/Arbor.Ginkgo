@@ -15,7 +15,7 @@ namespace Arbor.Ginkgo
                 throw new ArgumentNullException(nameof(path));
             }
 
-            var normalizePath = path.Replace('/', '\\');
+            string normalizePath = path.Replace('/', '\\');
 
             return normalizePath;
         }
@@ -23,7 +23,7 @@ namespace Arbor.Ginkgo
         public static int CopyTo(this DirectoryInfo sourceDirectory, DirectoryInfo destinationDirectory,
                                   bool copySubDirectories = true, IEnumerable<Predicate<FileInfo>> filesToExclude = null, IEnumerable<string> directoriesToExclude = null)
         {
-            var copiedItems = 0;
+            int copiedItems = 0;
 
             if (sourceDirectory == null)
             {
@@ -41,15 +41,15 @@ namespace Arbor.Ginkgo
                     $"Source directory does not exist or could not be found: {sourceDirectory.FullName}");
             }
 
-            var filePredicates = filesToExclude ?? new List<Predicate<FileInfo>>();
-            var excludedDirectories = directoriesToExclude ?? new List<string>();
+            IEnumerable<Predicate<FileInfo>> filePredicates = filesToExclude ?? new List<Predicate<FileInfo>>();
+            IEnumerable<string> excludedDirectories = directoriesToExclude ?? new List<string>();
 
             if (destinationDirectory.Exists)
             {
                 if (!destinationDirectory.IsEmpty())
                 {
-                    var fileCount = destinationDirectory.GetFiles().Length;
-                    var directoryCount = destinationDirectory.GetDirectories().Length;
+                    int fileCount = destinationDirectory.GetFiles().Length;
+                    int directoryCount = destinationDirectory.GetDirectories().Length;
                     throw new IOException(
                         $"The folder '{destinationDirectory.FullName}' cannot be used as a target folder since there are {fileCount} files and {directoryCount} folders in the folder");
                 }
@@ -60,11 +60,11 @@ namespace Arbor.Ginkgo
                 copiedItems++;
             }
 
-            var files = sourceDirectory.EnumerateFiles().Where(file => filePredicates.All(predicate => !predicate(file))).ToList();
+            List<FileInfo> files = sourceDirectory.EnumerateFiles().Where(file => filePredicates.All(predicate => !predicate(file))).ToList();
 
             foreach (FileInfo file in files)
             {
-                var temppath = Path.Combine(destinationDirectory.FullName, file.Name);
+                Path temppath = Path.Combine(destinationDirectory.FullName, file.Name);
                 Debug.WriteLine($"Copying file '{file.Name}' to '{temppath.FullName}'");
                 file.CopyTo(temppath.FullName, false);
                 copiedItems++;
@@ -80,7 +80,7 @@ namespace Arbor.Ginkgo
                         !excludedDirectories.Any(
                             excluded => subdir.Name.Equals(excluded, StringComparison.InvariantCultureIgnoreCase)))
                     {
-                        var subDirectoryTempPath = Path.Combine(destinationDirectory.FullName, subdir.Name);
+                        Path subDirectoryTempPath = Path.Combine(destinationDirectory.FullName, subdir.Name);
 
                         var subDirectoryInfo = new DirectoryInfo(subDirectoryTempPath.FullName);
 

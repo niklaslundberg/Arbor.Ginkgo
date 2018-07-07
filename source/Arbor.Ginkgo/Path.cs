@@ -16,9 +16,9 @@ namespace Arbor.Ginkgo
 				throw new ArgumentNullException(nameof(fullName));
 			}
 
-			var normalizedPath = fullName.NormalizePath();
+			string normalizedPath = fullName.NormalizePath();
 
-			var segments = normalizedPath.Split('\\');
+			string[] segments = normalizedPath.Split(System.IO.Path.DirectorySeparatorChar);
 
 			_pathSegments.AddRange(segments);
 		}
@@ -61,6 +61,7 @@ namespace Arbor.Ginkgo
 				{
 					return false;
 				}
+
 				return false;
 			}
 		}
@@ -77,14 +78,14 @@ namespace Arbor.Ginkgo
 				throw new ArgumentNullException(nameof(path2));
 			}
 
-			var combined = System.IO.Path.Combine(path1.FullName, path2);
+			string combined = System.IO.Path.Combine(path1.FullName, path2);
 
 			return new Path(combined);
 		}
 
 		public static Path Combine(params string[] paths)
 		{
-			var combined = System.IO.Path.Combine(paths);
+			string combined = System.IO.Path.Combine(paths);
 
 			return new Path(combined);
 		}
@@ -105,7 +106,7 @@ namespace Arbor.Ginkgo
 
 			pathList.Insert(0, path1.FullName);
 
-			var combined = System.IO.Path.Combine(pathList.ToArray());
+			string combined = System.IO.Path.Combine(pathList.ToArray());
 
 			return new Path(combined);
 		}

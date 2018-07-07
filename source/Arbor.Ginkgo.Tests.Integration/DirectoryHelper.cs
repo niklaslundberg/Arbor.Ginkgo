@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 
 namespace Arbor.Ginkgo.Tests.Integration
 {
@@ -18,9 +19,9 @@ namespace Arbor.Ginkgo.Tests.Integration
             {
                 return;
             }
+
             try
             {
-
                 foreach (DirectoryInfo directory in directoryInfo.GetDirectories())
                 {
                     DeleteRecursive(directory);
@@ -42,6 +43,39 @@ namespace Arbor.Ginkgo.Tests.Integration
                     Console.WriteLine($"Could not delete file '{fileInfo.FullName}', {ex}");
                     throw;
                 }
+            }
+
+            int attempt = 0;
+            Exception lastException = null;
+            while (directoryInfo.Exists && attempt < 10)
+            {
+                try
+                {
+                    directoryInfo.Refresh();
+
+                    if (directoryInfo.Exists)
+                    {
+                        Thread.Sleep(TimeSpan.FromMilliseconds(100));
+                        directoryInfo.Delete(true);
+                    }
+
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    attempt++;
+                }
+            }
+
+            if (directoryInfo.Exists)
+            {
+                if (lastException != null)
+                {
+                    throw new InvalidOperationException($"Could not delete directory {directoryInfo.FullName}", lastException);
+                }
+
+                throw new InvalidOperationException($"Could not delete directory {directoryInfo.FullName}");
             }
         }
     }

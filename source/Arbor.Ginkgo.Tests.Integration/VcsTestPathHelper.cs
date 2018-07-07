@@ -1,41 +1,17 @@
-using System;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using Arbor.Aesculus.Core;
+using NCrunch.Framework;
 
 namespace Arbor.Ginkgo.Tests.Integration
 {
-    internal class VcsTestPathHelper
+    internal static class VcsTestPathHelper
     {
         public static string FindVcsRootPath()
         {
-            try
+            if (NCrunchEnvironment.NCrunchIsResident())
             {
-                Assembly ncrunchAssembly = AppDomain.CurrentDomain.Load("NCrunch.Framework");
-
-                Type ncrunchType =
-                    ncrunchAssembly.GetTypes()
-                        .FirstOrDefault(
-                            type => type.Name.Equals("NCrunchEnvironment", StringComparison.InvariantCultureIgnoreCase));
-
-                if (ncrunchType != null)
-                {
-                    MethodInfo method = ncrunchType.GetMethod("GetOriginalSolutionPath");
-
-                    if (method != null)
-                    {
-                        string originalSolutionPath = method.Invoke(null, null) as string;
-                        if (!string.IsNullOrWhiteSpace(originalSolutionPath))
-                        {
-                            DirectoryInfo parent = new DirectoryInfo(originalSolutionPath).Parent;
-                            return VcsPathHelper.FindVcsRootPath(parent.FullName);
-                        }
-                    }
-                }
-            }
-            catch (Exception)
-            {
+                return VcsPathHelper.FindVcsRootPath(new FileInfo(NCrunchEnvironment.GetOriginalSolutionPath())
+                    .Directory?.FullName);
             }
 
             return VcsPathHelper.FindVcsRootPath();

@@ -8,7 +8,7 @@ namespace Arbor.Ginkgo
 {
     public static class ProcessExtensions
     {
-        public static void TryKillProcess(this Process process)
+        internal static void TryKillProcess(this Process process, Action<string> logger)
         {
             if (process == null)
             {
@@ -22,7 +22,7 @@ namespace Arbor.Ginkgo
                     return;
                 }
 
-                Console.WriteLine("Killing process " + process.ExecutablePath());
+                logger?.Invoke("Killing process " + process.ExecutablePath());
 
                 process.Kill();
             }
@@ -31,7 +31,7 @@ namespace Arbor.Ginkgo
             }
         }
 
-        public static string ExecutablePath(this Process process)
+        internal static string ExecutablePath(this Process process)
         {
             if (process == null)
             {
@@ -67,7 +67,7 @@ namespace Arbor.Ginkgo
             return string.Empty;
         }
 
-        public static void KillAllProcessRunningFromPath(string basePath)
+        public static void KillAllProcessRunningFromPath(string basePath, Action<string> logger = null)
         {
             List<Process> processesToKill = Process.GetProcesses()
                 .Where(process => ShouldKillProcess(process, basePath))
@@ -75,7 +75,7 @@ namespace Arbor.Ginkgo
 
             foreach (Process process in processesToKill)
             {
-                TryKillProcess(process);
+                TryKillProcess(process, logger);
             }
         }
 

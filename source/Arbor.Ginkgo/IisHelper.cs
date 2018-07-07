@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.Web.XmlTransform;
+using Arbor.Xdt;
 
 namespace Arbor.Ginkgo
 {
@@ -23,7 +23,8 @@ namespace Arbor.Ginkgo
             string customHostName = "",
             bool httpsEnabled = false,
             IEnumerable<KeyValuePair<string, string>> environmentVariables = null,
-            bool ignoreSiteRemovalErrors = false)
+            bool ignoreSiteRemovalErrors = false,
+            Action<string> logger = null)
         {
             if (websitePath == null)
             {
@@ -45,10 +46,10 @@ namespace Arbor.Ginkgo
 
             if (httpsEnabled)
             {
-                usedHttpsPort = httpsPort >= IPEndPoint.MinPort ? httpsPort : GetAvailableHttpsPort(usedHttpPort);
+                usedHttpsPort = httpsPort >= IPEndPoint.MinPort ? httpsPort : GetAvailableHttpsPort(logger, usedHttpPort);
             }
 
-            var iisExpress = new IisExpress();
+            var iisExpress = new IisExpress(logger);
 
             Path tempWebsitePath = tempPath != null
                 ? new Path(tempPath)
@@ -59,11 +60,11 @@ namespace Arbor.Ginkgo
                     DateTime.UtcNow.Ticks.ToString(),
                     httpPort.ToString(CultureInfo.InvariantCulture));
 
-            CopyWebsiteToTempPath(websitePath, tempWebsitePath);
+            CopyWebsiteToTempPath(websitePath, tempWebsitePath, logger);
 
-            Console.WriteLine("Copying files from {0} to {1}", websitePath.FullName, tempWebsitePath.FullName);
+            logger?.Invoke(string.Format("Copying files from {0} to {1}", websitePath.FullName, tempWebsitePath.FullName));
 
-            TransformWebConfig(websitePath, transformConfiguration, tempWebsitePath);
+            TransformWebConfig(websitePath, transformConfiguration, tempWebsitePath, logger);
 
             onCopiedWebsite?.Invoke(tempWebsitePath);
 
@@ -80,7 +81,7 @@ namespace Arbor.Ginkgo
             return iisExpress;
         }
 
-        static void TransformWebConfig(Path websitePath, string transformConfiguration, Path tempWebsitePath)
+        static void TransformWebConfig(Path websitePath, string transformConfiguration, Path tempWebsitePath, Action<string> logger)
         {
             if (string.IsNullOrWhiteSpace(transformConfiguration))
             {
@@ -96,28 +97,43 @@ namespace Arbor.Ginkgo
                 Path targetFile = Path.Combine(tempWebsitePath, "web.config");
 
                 string fullName = new FileInfo(targetFile.FullName).Directory.FullName;
+
                 if (Directory.Exists(fullName))
                 {
-                    Console.WriteLine("Transforming root file '{0}' with transformation '{1}' into '{2}'", transformRootFile.FullName, transformationFile.FullName, targetFile.FullName);
+                    logger?.Invoke(string.Format("Transforming root file '{0}' with transformation '{1}' into '{2}'", transformRootFile.FullName, transformationFile.FullName, targetFile.FullName));
 
-                    var transformable = new XmlTransformableDocument();
-                    transformable.Load(transformRootFile.FullName);
+                    string tempFile = null;
 
-                    var transformation = new XmlTransformation(transformationFile.FullName);
-
-                    if (transformation.Apply(transformable))
+                    using (var transformable = new XmlTransformableDocument())
                     {
-                        transformable.Save(targetFile.FullName);
+                        transformable.PreserveWhitespace = true;
+
+                        transformable.Load(transformRootFile.FullName);
+
+                        using (var transformation = new XmlTransformation(transformationFile.FullName))
+                        {
+                            if (transformation.Apply(transformable))
+                            {
+                                tempFile = System.IO.Path.GetTempFileName();
+
+                                transformable.Save(tempFile);
+
+                                File.Copy(tempFile, targetFile.FullName, overwrite: true);
+
+                            }
+                        }
                     }
+
+                    File.Delete(tempFile);
                 }
                 else
                 {
-                    Console.WriteLine("Directory {0} does not exist", fullName);
+                    logger?.Invoke(string.Format("Directory {0} does not exist", fullName));
                 }
             }
         }
 
-        static void CopyWebsiteToTempPath(Path websitePath, Path tempPath)
+        static void CopyWebsiteToTempPath(Path websitePath, Path tempPath, Action<string> logger)
         {
             var originalWebsiteDirectory = new DirectoryInfo(websitePath.FullName);
 
@@ -125,12 +141,12 @@ namespace Arbor.Ginkgo
 
             if (tempDirectory.Exists)
             {
-                Console.WriteLine("Deleting temp directory {0}", tempDirectory.FullName);
+                logger?.Invoke(string.Format("Deleting temp directory {0}", tempDirectory.FullName));
                 tempDirectory.Delete(true);
             }
 
             tempDirectory.Refresh();
-            Console.WriteLine("Creating temp directory {0}", tempDirectory.FullName);
+            logger?.Invoke(string.Format("Creating temp directory {0}", tempDirectory.FullName));
             tempDirectory.Create();
 
             var bannedExtensionList = new List<string>
@@ -184,7 +200,7 @@ namespace Arbor.Ginkgo
             int itemsCopied = originalWebsiteDirectory.CopyTo(tempDirectory, filesToExclude: filesToExclude,
                 directoriesToExclude: bannedDirectories);
 
-            Console.WriteLine("Copied {0} items", itemsCopied);
+            logger?.Invoke(string.Format("Copied {0} items", itemsCopied));
         }
 
         static int GetAvailableHttpPort(int? exclude = null)
@@ -200,7 +216,7 @@ namespace Arbor.Ginkgo
 
             return TcpHelper.GetAvailablePort(range, excluded);
         }
-        static int GetAvailableHttpsPort(params int[] exclusions)
+        static int GetAvailableHttpsPort(Action<string> logger, params int[] exclusions)
         {
             var range = new PortPoolRange(44330, 100);
 
@@ -213,7 +229,7 @@ namespace Arbor.Ginkgo
 
             int availableHttpsPort = TcpHelper.GetAvailablePort(range, excluded);
 
-            Console.WriteLine($"Got dynamic https port {availableHttpsPort}");
+            logger?.Invoke($"Got dynamic https port {availableHttpsPort}");
 
             return availableHttpsPort;
         }

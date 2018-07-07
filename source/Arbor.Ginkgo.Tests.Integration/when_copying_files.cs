@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Machine.Specifications;
 
 namespace Arbor.Ginkgo.Tests.Integration
@@ -23,6 +24,7 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             if (tempPath != null)
             {
+                Thread.Sleep(TimeSpan.FromMilliseconds(200));
                 new DirectoryInfo(tempPath.FullName).DeleteRecursive();
             }
         };
@@ -35,7 +37,7 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             templatePath = Path.Combine(sourceRoot, "source", "applicationHost.config");
 
-            tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", Guid.NewGuid().ToString());
+            tempPath = Path.Combine(System.IO.Path.GetTempPath(), $"Arbor.Ginkgo_{Guid.NewGuid()}");
         };
 
         private Because of =
@@ -45,7 +47,8 @@ namespace Arbor.Ginkgo.Tests.Integration
                     templatePath,
                     tempPath: tempPath.FullName,
                     ignoreSiteRemovalErrors: true,
-                    removeSiteOnExit: false).Result;
+                    removeSiteOnExit: false,
+                    logger: Console.WriteLine).Result;
             };
 
         private It should_not_contain_a_banned_directory =
