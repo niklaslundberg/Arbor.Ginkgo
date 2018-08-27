@@ -2,7 +2,7 @@
 <package >
   <metadata>
   <id>Arbor.Ginkgo</id>
-  <version>$version$</version>
+  <version>0.1.0</version>
   <title>Arbor Ginkgo</title>
   <authors>Niklas Lundberg</authors>
   <owners></owners>

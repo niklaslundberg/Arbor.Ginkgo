@@ -9,8 +9,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Arbor.Xdt" Version="0.2.1" />
-      <PackageReference Include="Microsoft.Net.Compilers" Version="2.8.2" />
-      <PackageReference Include="Microsoft.Windows.Compatibility" Version="2.0.0" />
+      <PackageReference Include="Arbor.Xdt" Version="0.2.4" />
+      <PackageReference Include="Microsoft.Net.Compilers" Version="2.9.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="Microsoft.Windows.Compatibility" Version="2.0.1" />
     </ItemGroup>
 </Project>

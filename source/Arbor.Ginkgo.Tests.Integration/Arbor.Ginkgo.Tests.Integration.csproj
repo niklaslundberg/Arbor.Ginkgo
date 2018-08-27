@@ -9,12 +9,15 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Arbor.Aesculus" Version="3.0.0" />
+      <PackageReference Include="Arbor.Aesculus" Version="3.0.2" />
       <PackageReference Include="Machine.Specifications" Version="0.12.0" />
       <PackageReference Include="Machine.Specifications.Runner.VisualStudio" Version="2.7.0" />
       <PackageReference Include="Machine.Specifications.Should" Version="0.11.0" />
-      <PackageReference Include="Microsoft.Net.Compilers" Version="2.8.2" />
-      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.2" />
+      <PackageReference Include="Microsoft.Net.Compilers" Version="2.9.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
       <PackageReference Include="NCrunch.Framework" Version="3.17.0" />
     </ItemGroup>
 
