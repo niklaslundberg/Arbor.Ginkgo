@@ -28,6 +28,7 @@ namespace Arbor.Ginkgo
             }
             catch (Exception)
             {
+                // ignore
             }
         }
 

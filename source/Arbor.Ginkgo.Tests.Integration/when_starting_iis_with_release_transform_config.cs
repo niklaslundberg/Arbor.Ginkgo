@@ -16,6 +16,7 @@ namespace Arbor.Ginkgo.Tests.Integration
         private static HttpResponseMessage result;
 
         private static int httpPort;
+        private static Path _tempPath;
 
         private Cleanup after = () =>
         {
@@ -50,7 +51,7 @@ namespace Arbor.Ginkgo.Tests.Integration
                 transformConfiguration: "release",
                 httpPort: httpPort,
                 ignoreSiteRemovalErrors: true,
-                    logger: Console.WriteLine,
+                logger: Console.WriteLine,
                 tempPath: _tempPath.FullName);
 
             iis = startWebsite.Result;
@@ -69,7 +70,7 @@ namespace Arbor.Ginkgo.Tests.Integration
                 new
                 {
                     Configuration = "",
-                    EnvironmentVariables = new KeyValuePair<string, string>[] { },
+                    EnvironmentVariables = Array.Empty<KeyValuePair<string, string>>(),
                     CurrentDirectory = string.Empty
                 });
 
@@ -79,6 +80,5 @@ namespace Arbor.Ginkgo.Tests.Integration
         };
 
         private It should_return_success_status_code = () => result.IsSuccessStatusCode.ShouldBeTrue();
-        private static Path _tempPath;
     }
 }
