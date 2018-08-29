@@ -1,20 +1,18 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
-
-using Arbor.Aesculus.Core;
+using System.Threading;
 using Machine.Specifications;
 
 namespace Arbor.Ginkgo.Tests.Integration
 {
     public class when_using_custom_temp_path
     {
-        static IisExpress iis;
-        static Path websitePath;
-        static Path templatePath;
-        static Path tempPath;
+        private static IisExpress iis;
+        private static Path websitePath;
+        private static Path templatePath;
+        private static Path tempPath;
 
-        Cleanup after = () =>
+        private Cleanup after = () =>
         {
             using (iis)
             {
@@ -22,14 +20,12 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             if (tempPath != null)
             {
-                if (Directory.Exists(tempPath.FullName))
-                {
-                    Directory.Delete(tempPath.FullName, recursive: true);
-                }
+                Thread.Sleep(TimeSpan.FromMilliseconds(200));
+                new DirectoryInfo(tempPath.FullName).DeleteRecursive();
             }
         };
 
-        Establish context = () =>
+        private Establish context = () =>
         {
             string sourceRoot = VcsTestPathHelper.FindVcsRootPath();
 
@@ -37,12 +33,21 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             templatePath = Path.Combine(sourceRoot, "source", "applicationHost.config");
 
-            tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", Guid.NewGuid().ToString());
+            tempPath = Path.Combine(System.IO.Path.GetTempPath(), $"Arbor.Ginkgo_{Guid.NewGuid()}");
         };
 
-        Because of =
-            () => { iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName, ignoreSiteRemovalErrors: true).Result; };
+        private Because of =
+            () =>
+            {
+                iis = IisHelper.StartWebsiteAsync(
+                    websitePath,
+                    templatePath,
+                    tempPath: tempPath.FullName,
+                    ignoreSiteRemovalErrors: true,
+                    removeSiteOnExit: true,
+                    logger: Console.WriteLine).Result;
+            };
 
-        It should_have_created_the_temp_path = () => Directory.Exists(iis.WebsitePath.FullName);
+        private It should_have_created_the_temp_path = () => Directory.Exists(iis.WebsitePath.FullName);
     }
 }

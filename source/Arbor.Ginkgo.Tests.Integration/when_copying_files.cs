@@ -1,71 +1,78 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-
+using System.Threading;
 using Machine.Specifications;
 
 namespace Arbor.Ginkgo.Tests.Integration
 {
     public class when_copying_files
     {
-        static IisExpress iis;
+        private static IisExpress iis;
 
-        static Path websitePath;
+        private static Path websitePath;
 
-        static Path templatePath;
+        private static Path templatePath;
 
-        static Path tempPath;
+        private static Path tempPath;
 
-        Cleanup after = () =>
+        private Cleanup after = () =>
+        {
+            using (iis)
             {
-                using (iis)
-                {
-                }
+            }
 
-                if (tempPath != null) {
-                    if (Directory.Exists(tempPath.FullName))
-                    {
-                        Directory.Delete(tempPath.FullName, recursive: true);
-                    }
-                }
-            };
-
-        Establish context = () =>
+            if (tempPath != null)
             {
-                string sourceRoot = VcsTestPathHelper.FindVcsRootPath();
+                Thread.Sleep(TimeSpan.FromMilliseconds(200));
+                new DirectoryInfo(tempPath.FullName).DeleteRecursive();
+            }
+        };
 
-                websitePath = Path.Combine(sourceRoot, "source", "Arbor.Ginkgo.Tests.Integration.WebApp");
+        private Establish context = () =>
+        {
+            string sourceRoot = VcsTestPathHelper.FindVcsRootPath();
 
-                templatePath = Path.Combine(sourceRoot, "source", "applicationHost.config");
+            websitePath = Path.Combine(sourceRoot, "source", "Arbor.Ginkgo.Tests.Integration.WebApp");
 
-                tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", Guid.NewGuid().ToString());
-            };
+            templatePath = Path.Combine(sourceRoot, "source", "applicationHost.config");
 
-        Because of =
-            () => { iis = IisHelper.StartWebsiteAsync(websitePath, templatePath, tempPath: tempPath.FullName, ignoreSiteRemovalErrors: true).Result; };
+            tempPath = Path.Combine(System.IO.Path.GetTempPath(), $"Arbor.Ginkgo_{Guid.NewGuid()}");
+        };
 
-        It should_not_contain_a_banned_directory =
+        private Because of =
             () =>
-                {
-                    var directoryInfo = new DirectoryInfo(tempPath.FullName);
-                    directoryInfo.GetFiles()
-                        .Select(file => file.Name)
-                        .ToList()
-                        .ShouldNotContain("Microsoft.CodeAnalysis.Analyzers.dll");
+            {
+                iis = IisHelper.StartWebsiteAsync(websitePath,
+                    templatePath,
+                    tempPath: tempPath.FullName,
+                    ignoreSiteRemovalErrors: true,
+                    removeSiteOnExit: false,
+                    logger: Console.WriteLine).Result;
+            };
 
-                    PrintDirectory(directoryInfo);
-                };
+        private It should_not_contain_a_banned_directory =
+            () =>
+            {
+                var directoryInfo = new DirectoryInfo(tempPath.FullName);
+                directoryInfo.GetFiles("*.*", SearchOption.AllDirectories)
+                    .Select(file => file.Name)
+                    .ToList()
+                    .ShouldNotContain("Microsoft.CodeAnalysis.Analyzers.dll");
 
-        static void PrintDirectory(DirectoryInfo directoryInfo)
+                PrintDirectory(directoryInfo);
+            };
+
+        private static void PrintDirectory(DirectoryInfo directoryInfo)
         {
             Console.WriteLine(directoryInfo.FullName);
 
-            foreach (var fileInfo in directoryInfo.GetFiles())
+            foreach (FileInfo fileInfo in directoryInfo.GetFiles())
             {
                 Console.WriteLine(fileInfo.FullName);
             }
 
-            foreach (var subDir in directoryInfo.GetDirectories())
+            foreach (DirectoryInfo subDir in directoryInfo.GetDirectories())
             {
                 PrintDirectory(subDir);
             }

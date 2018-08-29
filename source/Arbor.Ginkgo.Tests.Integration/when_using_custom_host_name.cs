@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using Machine.Specifications;
 
 namespace Arbor.Ginkgo.Tests.Integration
@@ -25,10 +26,8 @@ namespace Arbor.Ginkgo.Tests.Integration
             {
                 try
                 {
-                    if (Directory.Exists(tempPath.FullName))
-                    {
-                        Directory.Delete(tempPath.FullName, recursive: true);
-                    }
+                    Thread.Sleep(TimeSpan.FromMilliseconds(200));
+                    new DirectoryInfo(tempPath.FullName).DeleteRecursive();
                 }
                 catch (Exception ex)
                 {
@@ -40,19 +39,20 @@ namespace Arbor.Ginkgo.Tests.Integration
         Establish context = () =>
         {
             ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+
             string sourceRoot = VcsTestPathHelper.FindVcsRootPath();
 
             websitePath = Path.Combine(sourceRoot, "source", "Arbor.Ginkgo.Tests.Integration.WebApp");
 
             templatePath = Path.Combine(sourceRoot, "source", "Arbor.Ginkgo.Tests.Integration", "applicationHost.config");
 
-            tempPath = Path.Combine(System.IO.Path.GetTempPath(), "Arbor.Ginkgo", Guid.NewGuid().ToString());
+            tempPath = Path.Combine(System.IO.Path.GetTempPath(), $"Arbor.Ginkgo_{Guid.NewGuid()}");
         };
 
         Because of = () =>
             {
                 customHostName = "iisexpresstest.local";
-                Dictionary<string, string> environmentVariables = new Dictionary<string, string> {{"TEST", "ABC"}};
+                var environmentVariables = new Dictionary<string, string> {{"TEST", "ABC"}};
                 iis = IisHelper.StartWebsiteAsync(
                     websitePath,
                     templatePath,
@@ -63,7 +63,8 @@ namespace Arbor.Ginkgo.Tests.Integration
                     httpPort: 55557,
                     httpsEnabled: true,
                     environmentVariables: environmentVariables,
-                    ignoreSiteRemovalErrors: true).Result;
+                    ignoreSiteRemovalErrors: true,
+                    logger: Console.WriteLine).Result;
             };
 
         static void OnCopiedWebsite(Path path)
@@ -75,7 +76,7 @@ namespace Arbor.Ginkgo.Tests.Integration
         {
             using (var client = new HttpClient())
             {
-                var requestUri = $"http://localhost:{iis.Port.ToString(CultureInfo.InvariantCulture)}/api/test";
+                string requestUri = $"http://localhost:{iis.Port.ToString(CultureInfo.InvariantCulture)}/api/test";
 
                 Console.WriteLine(requestUri);
 
@@ -96,12 +97,18 @@ namespace Arbor.Ginkgo.Tests.Integration
 
                 Console.WriteLine(requestUri);
 
-                using (HttpResponseMessage response = client.GetAsync(requestUri).Result)
+                Exception exception = Catch.Exception(() =>
                 {
-                    Console.WriteLine(response);
+                    using (HttpResponseMessage response = client.GetAsync(requestUri).Result)
+                    {
+                        Console.WriteLine(response);
 
-                    response.StatusCode.ShouldEqual(HttpStatusCode.BadRequest);
-                }
+                        response.StatusCode.ShouldEqual(HttpStatusCode.BadRequest);
+                    }
+                });
+
+                Console.WriteLine(exception);
+                (exception.InnerException as HttpRequestException).ShouldNotBeNull();
             }
         };
 
@@ -109,11 +116,11 @@ namespace Arbor.Ginkgo.Tests.Integration
         {
             using (var client = new HttpClient())
             {
-                var requestUri = $"http://{customHostName}:{iis.Port.ToString(CultureInfo.InvariantCulture)}/api/test";
+                string requestUri = $"http://{customHostName}:{iis.Port.ToString(CultureInfo.InvariantCulture)}/api/test";
 
                 Console.WriteLine(requestUri);
 
-                var response = client.GetAsync(requestUri).Result;
+                HttpResponseMessage response = client.GetAsync(requestUri).Result;
 
                 Console.WriteLine(response);
                 Console.WriteLine(response?.Content.ReadAsStringAsync().Result);
@@ -126,14 +133,12 @@ namespace Arbor.Ginkgo.Tests.Integration
         {
             using (var client = new HttpClient())
             {
-                var requestUri =
+                string requestUri =
                     $"https://{customHostName}:{iis.HttpsPort.ToString(CultureInfo.InvariantCulture)}/api/test";
-
-
 
                 Console.WriteLine(requestUri);
 
-                var response = client.GetAsync(requestUri).Result;
+                HttpResponseMessage response = client.GetAsync(requestUri).Result;
 
                 response.StatusCode.ShouldEqual(HttpStatusCode.OK);
             }
