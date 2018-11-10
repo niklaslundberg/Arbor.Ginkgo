@@ -58,7 +58,7 @@ namespace Arbor.Ginkgo
                     "Arbor.Ginkgo",
                     "TempWebsite",
                     DateTime.UtcNow.Ticks.ToString(),
-                    httpPort.ToString(CultureInfo.InvariantCulture));
+                    usedHttpPort.ToString(CultureInfo.InvariantCulture));
 
             CopyWebsiteToTempPath(websitePath, tempWebsitePath, logger);
 
