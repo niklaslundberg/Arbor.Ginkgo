@@ -125,6 +125,10 @@ namespace Arbor.Ginkgo
             {
                 foreach (KeyValuePair<string, string> environmentVariable in environmentVariables.ToArray())
                 {
+                    if (startInfo.EnvironmentVariables.ContainsKey(environmentVariable.Key))
+                    {
+                        startInfo.EnvironmentVariables.Remove(environmentVariable.Key);
+                    }
                     startInfo.EnvironmentVariables.Add(environmentVariable.Key, environmentVariable.Value);
                 }
             }
