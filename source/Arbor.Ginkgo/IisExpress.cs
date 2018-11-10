@@ -111,7 +111,7 @@ namespace Arbor.Ginkgo
                 _tempTemplateFilePath,
                 $"Arbor_Ginkgo_{httpPort}");
 
-            var startInfo = new ProcessStartInfo(iisExpressPath + @"\iisexpress.exe")
+            var startInfo = new ProcessStartInfo(Path.Combine(iisExpressPath, "iisexpress.exe").FullName)
             {
                 WindowStyle = ProcessWindowStyle.Normal,
                 ErrorDialog = true,
@@ -123,7 +123,7 @@ namespace Arbor.Ginkgo
 
             if (environmentVariables != null)
             {
-                foreach (KeyValuePair<string, string> environmentVariable in environmentVariables)
+                foreach (KeyValuePair<string, string> environmentVariable in environmentVariables.ToArray())
                 {
                     startInfo.EnvironmentVariables.Add(environmentVariable.Key, environmentVariable.Value);
                 }
@@ -151,7 +151,7 @@ namespace Arbor.Ginkgo
             while (!_processId.HasValue)
             {
                 Thread.Sleep(TimeSpan.FromMilliseconds(50));
-                _logger?.Invoke(string.Format("Waiting {0} milliseconds", 50 * waitCounter));
+                _logger?.Invoke($"Waiting {50 * waitCounter} milliseconds");
                 waitCounter++;
             }
 
@@ -343,9 +343,8 @@ namespace Arbor.Ginkgo
             Port = httpPort;
             HttpsPort = httpsPort;
 
-            logger?.Invoke(string.Format("Setting up new IIS Express instance on port {0} with configuration file '{1}",
-                Port,
-                tempFilePath));
+            logger?.Invoke(
+                $"Setting up new IIS Express instance on port {Port} with configuration file '{tempFilePath}");
 
             var commands = new List<string>();
 
@@ -393,7 +392,7 @@ namespace Arbor.Ginkgo
             {
                 string processInfo = $"'{exePath}' {command}";
 
-                logger?.Invoke(string.Format("Executing {0}{1}", Environment.NewLine, processInfo));
+                logger?.Invoke($"Executing {Environment.NewLine}{processInfo}");
 
                 var process = new Process
                 {
@@ -450,7 +449,7 @@ namespace Arbor.Ginkgo
                 if (_process != null)
                 {
                     _processId = _process.Id;
-                    _logger?.Invoke(string.Format("Running IIS Express with id {0}, waiting for exit", _processId));
+                    _logger?.Invoke($"Running IIS Express with id {_processId}, waiting for exit");
 
                     if (!_process.HasExited)
                     {

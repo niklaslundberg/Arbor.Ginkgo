@@ -20,8 +20,12 @@ namespace Arbor.Ginkgo
             return normalizePath;
         }
 
-        public static int CopyTo(this DirectoryInfo sourceDirectory, DirectoryInfo destinationDirectory,
-                                  bool copySubDirectories = true, IEnumerable<Predicate<FileInfo>> filesToExclude = null, IEnumerable<string> directoriesToExclude = null)
+        public static int CopyTo(
+            this DirectoryInfo sourceDirectory,
+            DirectoryInfo destinationDirectory,
+            bool copySubDirectories = true,
+            IEnumerable<Predicate<FileInfo>> filesToExclude = null,
+            IEnumerable<string> directoriesToExclude = null)
         {
             int copiedItems = 0;
 
@@ -41,8 +45,8 @@ namespace Arbor.Ginkgo
                     $"Source directory does not exist or could not be found: {sourceDirectory.FullName}");
             }
 
-            IEnumerable<Predicate<FileInfo>> filePredicates = filesToExclude ?? new List<Predicate<FileInfo>>();
-            IEnumerable<string> excludedDirectories = directoriesToExclude ?? new List<string>();
+            List<Predicate<FileInfo>> filePredicates = filesToExclude?.ToList() ?? new List<Predicate<FileInfo>>();
+            List<string> excludedDirectories = directoriesToExclude?.ToList() ?? new List<string>();
 
             if (destinationDirectory.Exists)
             {
@@ -51,7 +55,7 @@ namespace Arbor.Ginkgo
                     int fileCount = destinationDirectory.GetFiles().Length;
                     int directoryCount = destinationDirectory.GetDirectories().Length;
                     throw new IOException(
-                        $"The folder '{destinationDirectory.FullName}' cannot be used as a target folder since there are {fileCount} files and {directoryCount} folders in the folder");
+                        $"The directory '{destinationDirectory.FullName}' cannot be used as a target folder since there are {fileCount} files and {directoryCount} folders in the folder");
                 }
             }
             else
@@ -60,40 +64,46 @@ namespace Arbor.Ginkgo
                 copiedItems++;
             }
 
-            List<FileInfo> files = sourceDirectory.EnumerateFiles().Where(file => filePredicates.All(predicate => !predicate(file))).ToList();
+            List<FileInfo> files = sourceDirectory.EnumerateFiles()
+                .Where(file => filePredicates.All(predicate => !predicate(file))).ToList();
 
             foreach (FileInfo file in files)
             {
-                Path temppath = Path.Combine(destinationDirectory.FullName, file.Name);
-                Debug.WriteLine($"Copying file '{file.Name}' to '{temppath.FullName}'");
-                file.CopyTo(temppath.FullName, false);
+                Path tempPath = Path.Combine(destinationDirectory.FullName, file.Name);
+                Debug.WriteLine($"Copying file '{file.Name}' to '{tempPath.FullName}'");
+                file.CopyTo(tempPath.FullName, false);
                 copiedItems++;
             }
 
             if (copySubDirectories)
             {
-                DirectoryInfo[] subDirectory = sourceDirectory.GetDirectories();
+                DirectoryInfo[] subDirectories = sourceDirectory.GetDirectories();
 
-                foreach (DirectoryInfo subdir in subDirectory)
+                foreach (DirectoryInfo subDirectory in subDirectories)
                 {
                     if (
                         !excludedDirectories.Any(
-                            excluded => subdir.Name.Equals(excluded, StringComparison.InvariantCultureIgnoreCase)))
+                            excluded => subDirectory.Name.Equals(excluded, StringComparison.InvariantCultureIgnoreCase)))
                     {
-                        Path subDirectoryTempPath = Path.Combine(destinationDirectory.FullName, subdir.Name);
+                        Path subDirectoryTempPath = Path.Combine(destinationDirectory.FullName, subDirectory.Name);
 
                         var subDirectoryInfo = new DirectoryInfo(subDirectoryTempPath.FullName);
 
-                        Debug.WriteLine($"Copying directory '{subDirectoryInfo.Name}' to '{subDirectoryTempPath.FullName}'");
+                        Debug.WriteLine(
+                            $"Copying directory '{subDirectoryInfo.Name}' to '{subDirectoryTempPath.FullName}'");
 
-                        copiedItems += subdir.CopyTo(subDirectoryInfo, copySubDirectories, filesToExclude, directoriesToExclude);
+                        copiedItems += subDirectory.CopyTo(subDirectoryInfo,
+                            true,
+                            filePredicates,
+                            excludedDirectories);
                     }
                 }
             }
+
             return copiedItems;
         }
 
-        static bool IsEmpty(this DirectoryInfo directoryInfo)
+        private static bool IsEmpty(this DirectoryInfo directoryInfo)
         {
             return !directoryInfo.EnumerateFiles().Any() && !directoryInfo.EnumerateDirectories().Any();
         }
