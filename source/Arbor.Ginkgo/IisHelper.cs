@@ -58,11 +58,11 @@ namespace Arbor.Ginkgo
                     "Arbor.Ginkgo",
                     "TempWebsite",
                     DateTime.UtcNow.Ticks.ToString(),
-                    httpPort.ToString(CultureInfo.InvariantCulture));
+                    usedHttpPort.ToString(CultureInfo.InvariantCulture));
 
             CopyWebsiteToTempPath(websitePath, tempWebsitePath, logger);
 
-            logger?.Invoke(string.Format("Copying files from {0} to {1}", websitePath.FullName, tempWebsitePath.FullName));
+            logger?.Invoke($"Copying files from {websitePath.FullName} to {tempWebsitePath.FullName}");
 
             TransformWebConfig(websitePath, transformConfiguration, tempWebsitePath, logger);
 
@@ -96,11 +96,17 @@ namespace Arbor.Ginkgo
             {
                 Path targetFile = Path.Combine(tempWebsitePath, "web.config");
 
-                string fullName = new FileInfo(targetFile.FullName).Directory.FullName;
+                if (targetFile?.FullName is null)
+                {
+                    throw new InvalidOperationException("The target file is null");
+                }
+
+                string fullName = new FileInfo(targetFile.FullName).Directory?.FullName;
 
                 if (Directory.Exists(fullName))
                 {
-                    logger?.Invoke(string.Format("Transforming root file '{0}' with transformation '{1}' into '{2}'", transformRootFile.FullName, transformationFile.FullName, targetFile.FullName));
+                    logger?.Invoke(
+                        $"Transforming root file '{transformRootFile.FullName}' with transformation '{transformationFile.FullName}' into '{targetFile.FullName}'");
 
                     string tempFile = null;
 
@@ -124,11 +130,13 @@ namespace Arbor.Ginkgo
                         }
                     }
 
-                    File.Delete(tempFile);
+                    if (!(tempFile is null)) {
+                        File.Delete(tempFile);
+                    }
                 }
                 else
                 {
-                    logger?.Invoke(string.Format("Directory {0} does not exist", fullName));
+                    logger?.Invoke($"Directory {fullName} does not exist");
                 }
             }
         }
@@ -141,12 +149,12 @@ namespace Arbor.Ginkgo
 
             if (tempDirectory.Exists)
             {
-                logger?.Invoke(string.Format("Deleting temp directory {0}", tempDirectory.FullName));
+                logger?.Invoke($"Deleting temp directory {tempDirectory.FullName}");
                 tempDirectory.Delete(true);
             }
 
             tempDirectory.Refresh();
-            logger?.Invoke(string.Format("Creating temp directory {0}", tempDirectory.FullName));
+            logger?.Invoke($"Creating temp directory {tempDirectory.FullName}");
             tempDirectory.Create();
 
             var bannedExtensionList = new List<string>
@@ -200,7 +208,7 @@ namespace Arbor.Ginkgo
             int itemsCopied = originalWebsiteDirectory.CopyTo(tempDirectory, filesToExclude: filesToExclude,
                 directoriesToExclude: bannedDirectories);
 
-            logger?.Invoke(string.Format("Copied {0} items", itemsCopied));
+            logger?.Invoke($"Copied {itemsCopied} items");
         }
 
         static int GetAvailableHttpPort(int? exclude = null)
