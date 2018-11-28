@@ -66,6 +66,8 @@ namespace Arbor.Ginkgo.Tests.Integration
 
             string body = result.Content.ReadAsStringAsync().Result;
 
+            Console.WriteLine(body);
+
             var deserializeAnonymousType = JsonConvert.DeserializeAnonymousType(body,
                 new
                 {

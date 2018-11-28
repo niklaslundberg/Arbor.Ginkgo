@@ -10,7 +10,7 @@
 
     <ItemGroup>
       <PackageReference Include="Arbor.Xdt" Version="0.2.4" />
-      <PackageReference Include="Microsoft.Net.Compilers" Version="2.9.0">
+      <PackageReference Include="Microsoft.Net.Compilers" Version="2.10.0">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       </PackageReference>
