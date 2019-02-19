@@ -39,6 +39,6 @@
   <files>
     <file src="Arbor.Ginkgo\bin\$configuration$\netcoreapp2.2\Arbor.Ginkgo.dll" target="lib\netcoreapp2.2\Arbor.Ginkgo.dll" />
     <file src="Arbor.Ginkgo\bin\$configuration$\netcoreapp2.1\Arbor.Ginkgo.dll" target="lib\netcoreapp2.1\Arbor.Ginkgo.dll" />
-    <file src="Arbor.Ginkgo\bin\$configuration$\net471\Arbor.Ginkgo.dll" target="lib\net471\Arbor.Ginkgo.dll" />
+    <file src="Arbor.Ginkgo\bin\$configuration$\net471\Arbor.Ginkgo.dll" target="lib\net472\Arbor.Ginkgo.dll" />
   </files>
 </package>
